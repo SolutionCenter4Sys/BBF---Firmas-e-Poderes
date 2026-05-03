@@ -110,7 +110,7 @@ export default function DashboardPage() {
               </tr>
             ))}
             {filtered.length === 0 && (
-              <tr><td colSpan={8} style={{ textAlign: "center", padding: 24, color: "var(--color-text-secondary)" }}>Nenhum documento encontrado para "{query}".</td></tr>
+              <tr><td colSpan={8} style={{ textAlign: "center", padding: 24, color: "var(--color-text-secondary)" }}>Nenhum documento encontrado para &quot;{query}&quot;.</td></tr>
             )}
           </tbody>
         </table>

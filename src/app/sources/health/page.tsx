@@ -100,7 +100,7 @@ export default function SourcesHealthPage() {
       <div className="card">
         <h3>Política de fallback</h3>
         <ul style={{ lineHeight: 1.8 }}>
-          <li>Quando uma fonte está <strong>indisponível</strong>, o motor de decisão (EP-04) retorna <strong>MANUAL</strong> com motivo "validação indisponível".</li>
+          <li>Quando uma fonte está <strong>indisponível</strong>, o motor de decisão (EP-04) retorna <strong>MANUAL</strong> com motivo &quot;validação indisponível&quot;.</li>
           <li>O <strong>circuit breaker</strong> abre após 5 falhas consecutivas em janela de 1 minuto.</li>
           <li>Em estado <strong>meio-aberto</strong>, o conector envia 1 requisição de teste a cada 30s para verificar recuperação.</li>
           <li>Alertas <strong>P1</strong> são disparados quando uma fonte fica indisponível por mais de 15 minutos.</li>

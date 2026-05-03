@@ -97,7 +97,7 @@ export default function DocsApiPage() {
                   <code style={{ fontSize: 14, fontWeight: 600 }}>{r.code}</code>
                   <span style={{ fontSize: 14 }}>{r.description}</span>
                 </div>
-                {r.example && (
+                {r.example !== undefined && (
                   <pre style={{ marginTop: 8, fontSize: 12 }}>{JSON.stringify(r.example, null, 2)}</pre>
                 )}
               </div>

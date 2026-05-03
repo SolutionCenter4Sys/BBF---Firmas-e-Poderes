@@ -143,7 +143,7 @@ export default function DocumentDetailPage() {
               </div>
               <div style={{ marginTop: 12, padding: 12, background: "white", borderLeft: "4px solid var(--color-brand-secondary)", fontSize: 13, fontStyle: "italic", color: "var(--color-text-secondary)" }}>
                 <div style={{ fontSize: 11, fontStyle: "normal", color: "var(--color-text-muted)", marginBottom: 4 }}>Origem: pg {p.sourceTrace.page}, offset {p.sourceTrace.offsetStart}-{p.sourceTrace.offsetEnd}</div>
-                "{p.sourceTrace.snippet}"
+                &quot;{p.sourceTrace.snippet}&quot;
               </div>
             </div>
           ))}

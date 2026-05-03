@@ -89,7 +89,7 @@ export default function DecisionPage({ searchParams }: { searchParams: { docId?:
             </div>
             <div style={{ fontSize: 14 }}>{e.detalhe}</div>
             {e.trace?.snippet && (
-              <div style={{ marginTop: 8, padding: 8, background: "white", fontSize: 13, fontStyle: "italic", color: "var(--color-text-secondary)" }}>"{e.trace.snippet}"</div>
+              <div style={{ marginTop: 8, padding: 8, background: "white", fontSize: 13, fontStyle: "italic", color: "var(--color-text-secondary)" }}>&quot;{e.trace.snippet}&quot;</div>
             )}
           </div>
         ))}
