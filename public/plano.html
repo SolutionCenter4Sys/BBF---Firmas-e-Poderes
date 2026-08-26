@@ -1,0 +1,819 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Planejamento de Execução — BBF Firmas e Poderes — PoC Next.js → .NET + React + PostgreSQL</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@300;400;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+:root{
+  --navy:#222239; --navy-soft:#2E2E4A; --navy-deep:#181828;
+  --orange:#FF5315; --mint:#89BAB1; --vanilla:#FFE2A9;
+  --white:#FFFFFF; --off-white:#F7F6F2;
+  --grey-light:#E8E7E2; --grey-mid:#B0AEAD; --grey-dark:#555463;
+  --font:'Nunito','Helvetica',Arial,sans-serif;
+  --shadow:0 4px 18px rgba(34,34,57,.10); --radius:10px;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+body{font-family:var(--font);background:var(--off-white);color:var(--navy);font-size:12px;line-height:1.45;}
+.page{max-width:1360px;margin:0 auto;background:var(--white);box-shadow:var(--shadow);}
+.cover{background:linear-gradient(135deg,var(--navy-deep) 0%,var(--navy) 55%,var(--navy-soft) 100%);
+  color:var(--white);padding:34px 40px 26px;}
+.cover-top{display:flex;align-items:center;justify-content:space-between;gap:20px;}
+.logo{display:flex;align-items:center;gap:10px;font-weight:900;font-size:22px;letter-spacing:.5px;}
+.logo svg{display:block;}
+.logo span{color:var(--orange);}
+.cover-eyebrow{font-size:9px;font-weight:800;letter-spacing:2px;text-transform:uppercase;
+  color:var(--orange);margin:18px 0 6px;}
+.cover h1{font-size:26px;font-weight:900;line-height:1.15;}
+.cover h1 em{font-style:normal;color:var(--orange);}
+.cover .tagline{font-size:12px;color:rgba(255,255,255,.82);max-width:920px;margin-top:8px;line-height:1.6;}
+.cover-meta{display:flex;flex-wrap:wrap;gap:10px 26px;margin-top:20px;}
+.cover-meta .par{display:flex;flex-direction:column;gap:2px;}
+.cover-meta .lbl{font-size:8px;font-weight:800;letter-spacing:1.4px;text-transform:uppercase;color:var(--orange);}
+.cover-meta .val{font-size:12px;font-weight:700;color:var(--white);}
+.status-pill{font-weight:800;font-size:11px;padding:6px 14px;border-radius:20px;
+  letter-spacing:.8px;text-transform:uppercase;white-space:nowrap;}
+.brand-bar{height:6px;background:linear-gradient(90deg,var(--navy) 0%,var(--orange) 100%);}
+.section-lead{font-size:10px;color:var(--grey-dark);margin:0 0 9px;}
+.decisao + .decisao{margin-top:11px;padding-top:10px;border-top:1px solid var(--grey-light);}
+.decisao > p{font-size:11px;}
+.decisao-meta{font-size:9.5px;font-weight:700;color:var(--grey-dark);margin-top:5px;
+  text-transform:uppercase;letter-spacing:.5px;}
+.opcoes{list-style:none;margin:7px 0 0;}
+.opcoes li{position:relative;padding:4px 0 4px 16px;font-size:11px;}
+.opcoes li::before{content:"";position:absolute;left:0;top:10px;width:7px;height:7px;
+  border-radius:2px;background:var(--orange);}
+.opcao-rec{display:inline-block;margin-left:6px;padding:1px 7px;border-radius:10px;
+  background:var(--mint);color:var(--navy-deep);font-size:8px;font-weight:800;
+  text-transform:uppercase;letter-spacing:.5px;}
+.content{padding:20px 40px 28px;}
+section{margin-bottom:26px;}
+.section-title{display:flex;align-items:center;gap:9px;font-weight:800;font-size:12px;
+  text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;}
+.section-title .tick{width:18px;height:4px;background:var(--orange);border-radius:2px;}
+.timeline-legend{display:flex;gap:18px;font-size:9px;font-weight:700;color:var(--grey-dark);
+  margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px;}
+.timeline-legend .dot{width:9px;height:9px;border-radius:50%;display:inline-block;
+  margin-right:5px;vertical-align:middle;}
+.timeline-legend .dot.done{background:var(--mint);}
+.timeline-legend .dot.current{background:var(--orange);}
+.timeline-legend .dot.pending{background:var(--white);border:2px solid var(--grey-light);}
+.timeline-wrap{position:relative;padding:12px 0 4px;}
+.timeline-steps{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:6px;}
+.timeline-step{display:flex;flex-direction:column;align-items:center;text-align:center;padding:0 3px;}
+.timeline-num{font-size:8px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:var(--grey-mid);margin-bottom:7px;}
+.timeline-node{width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  font-weight:900;font-size:13px;margin-bottom:9px;background:var(--white);color:var(--grey-mid);border:3px solid var(--grey-light);}
+.timeline-title{font-size:9px;font-weight:800;line-height:1.25;min-height:34px;}
+.timeline-meta{font-size:8px;color:var(--grey-dark);}
+.timeline-badge{display:inline-block;margin-top:7px;padding:2px 7px;border-radius:12px;font-size:7px;font-weight:800;text-transform:uppercase;}
+.timeline-step.done .timeline-node{background:var(--mint);color:var(--navy-deep);border-color:var(--mint);}
+.timeline-step.current .timeline-node{background:var(--orange);color:var(--white);border-color:var(--orange);transform:scale(1.07);}
+.timeline-step.current .timeline-badge{background:rgba(255,83,21,.14);color:var(--orange);}
+.timeline-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:20px;}
+.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:14px;}
+.stat-card{background:var(--off-white);border:1px solid var(--grey-light);border-top:3px solid var(--orange);
+  border-radius:var(--radius);padding:14px 16px;text-align:center;}
+.stat-card .num{font-size:23px;font-weight:900;color:var(--orange);}
+.stat-card .lbl{font-size:10px;color:var(--grey-dark);font-weight:700;margin-top:4px;text-transform:uppercase;}
+.stat-card.total{background:var(--navy);border-top-color:var(--vanilla);}
+.stat-card.total .num{color:var(--vanilla);}
+.stat-card.total .lbl{color:var(--grey-mid);}
+.grid{display:grid;gap:12px;}
+.grid-4{grid-template-columns:repeat(4,1fr);}
+.grid-2{grid-template-columns:1fr 1fr;}
+.kpi{background:var(--off-white);border-left:4px solid var(--orange);border-radius:6px;padding:10px 14px;}
+.kpi.warn{border-left-color:var(--vanilla);background:#FFFAF0;}
+.kpi .lbl{font-size:9px;text-transform:uppercase;letter-spacing:.8px;color:var(--grey-dark);font-weight:800;}
+.kpi .val{font-size:17px;font-weight:900;margin-top:3px;}
+.kpi .sub{font-size:9.5px;color:var(--grey-dark);margin-top:2px;}
+.card{background:var(--off-white);border-left:4px solid var(--orange);border-radius:6px;padding:11px 15px;box-shadow:0 1px 4px rgba(34,34,57,.06);}
+.card.mint{border-left-color:var(--mint);}
+.card.vanilla{border-left-color:var(--vanilla);background:#FFFAF0;}
+.card ul{list-style:none;}
+.card li{padding:3px 0 3px 15px;position:relative;}
+.card li::before{content:"";position:absolute;left:0;top:9px;width:6px;height:6px;border-radius:2px;background:var(--orange);}
+.card.mint li::before{background:var(--mint);}
+.card-titulo{font-weight:800;font-size:11px;text-transform:uppercase;letter-spacing:.8px;margin-bottom:5px;}
+.tabela-wrap{overflow-x:auto;border-radius:var(--radius);box-shadow:var(--shadow);}
+table{width:100%;border-collapse:collapse;font-size:10.5px;}
+thead th{background:var(--navy);color:var(--white);text-transform:uppercase;font-size:8.5px;
+  letter-spacing:.5px;padding:7px 9px;text-align:left;border-bottom:3px solid var(--orange);}
+thead tr.grupos th{background:var(--navy-deep);border-bottom:1px solid var(--navy-soft);font-size:8px;color:var(--vanilla);text-align:center;}
+tbody td{padding:6px 9px;border-bottom:1px solid var(--grey-light);vertical-align:top;}
+tbody tr:nth-child(even) td{background:#FAFAF7;}
+td.nowrap{white-space:nowrap;}
+td.center{text-align:center;}
+.fase-tag{display:inline-block;margin-left:7px;font-size:8px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;color:var(--grey-dark);}
+.chip{display:inline-block;font-size:8.5px;font-weight:800;padding:2px 8px;border-radius:10px;text-transform:uppercase;letter-spacing:.5px;}
+.nota-tabela{margin-top:7px;font-size:9px;color:var(--grey-dark);}
+.footer{border-top:3px solid var(--orange);padding:11px 40px;font-size:9.5px;color:var(--grey-dark);display:flex;justify-content:space-between;}
+.btn-print{position:fixed;top:14px;right:14px;background:var(--orange);color:#fff;border:none;
+  padding:9px 16px;border-radius:6px;font-family:var(--font);font-size:12px;font-weight:800;cursor:pointer;z-index:99;}
+.wf-nav{display:flex;flex-wrap:wrap;gap:6px;margin:12px 0 16px;}
+.wf-nav a{font-size:9px;font-weight:800;text-decoration:none;color:var(--navy);background:var(--off-white);
+  border:1px solid var(--grey-light);padding:4px 8px;border-radius:6px;}
+.wf-item{border:1px solid var(--grey-light);border-left:4px solid var(--orange);border-radius:8px;padding:14px 16px;margin-bottom:16px;background:var(--white);}
+.wf-item.aprovado{border-left-color:var(--mint);}
+.wf-head{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-bottom:10px;}
+.wf-head h3{font-size:14px;font-weight:900;}
+.wf-grid{display:grid;grid-template-columns:140px 1fr;gap:4px 10px;font-size:10.5px;margin-bottom:10px;}
+.wf-grid dt{font-weight:800;color:var(--grey-dark);}
+.wf-os{background:var(--navy-deep);color:#E8E7E2;padding:12px;border-radius:6px;font-size:9px;line-height:1.45;white-space:pre-wrap;max-height:420px;overflow:auto;font-family:Consolas,Monaco,monospace;}
+.wf-status{margin-left:auto;}
+@media (max-width:900px){.timeline-cards,.grid-4,.grid-2,.stats-grid{grid-template-columns:1fr;}}
+@media print{.btn-print{display:none;}.page{box-shadow:none;}tr,.card,.wf-item{break-inside:avoid;}}
+</style>
+</head>
+<body>
+<button class="btn-print" onclick="window.print()">Exportar PDF</button>
+<div class="page">
+<header class="cover">
+  <div class="cover-top">
+    <div class="logo" aria-label="Foursys">
+      <svg width="28" height="28" viewBox="0 0 28 28" fill="none" aria-hidden="true">
+        <path d="M4 8 L10 14 L4 20" stroke="#FF5315" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M11 8 L17 14 L11 20" stroke="#FF5315" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      four<span>sys</span>
+    </div>
+    <span class="status-pill" style="background:#FFE2A9;color:#7A4F00">AR C1+C2: 3.3 · Bloqueado como produção</span>
+  </div>
+  <p class="cover-eyebrow">Planejamento de execução · Architecture Review (Pierre)</p>
+  <h1>BBF Firmas e Poderes — PoC Next.js → <em>.NET + React + PostgreSQL</em></h1>
+  <p class="tagline">Mesmo molde do plano CheckIn (OS por chat, um branch por item, aceite verificável). Spec executável deste repo: UI Next.js + catálogo em <code>src/lib/mocks.ts</code> + proxy KAAS. Transcrição/OCR continua no KAAS (externo). AWS só depois do compose local verde.</p>
+  <div class="cover-meta">
+    <div class="par"><span class="lbl">Cliente</span><span class="val">BBF / Bradesco</span></div>
+    <div class="par"><span class="lbl">Repo</span><span class="val">BBF---Firmas-e-Poderes</span></div>
+    <div class="par"><span class="lbl">Versão</span><span class="val">V1.00</span></div>
+    <div class="par"><span class="lbl">Data</span><span class="val">26/08/2026</span></div>
+    <div class="par"><span class="lbl">AR Pierre</span><span class="val">C1 3.5 · C2 3.0</span></div>
+    <div class="par"><span class="lbl">Classificação</span><span class="val">Confidencial</span></div>
+  </div>
+</header>
+<div class="brand-bar"></div>
+<main class="content">
+
+<section>
+  <div class="section-title"><span class="tick"></span>Como usar este documento (evasão de contexto)</div>
+  <div class="card mint">
+    <div class="card-titulo">Regra de ouro (igual ao plano anexo)</div>
+    <ul>
+      <li>Um item WF = um chat novo. Copie o bloco escuro (ordem de serviço) inteiro.</li>
+      <li>Ative o agente indicado na OS. Não misture Ricardo e Sofia no mesmo chat.</li>
+      <li>Branch <code>wf-NN-slug</code>. Nenhuma OS escreve no branch da outra.</li>
+      <li>Cole a saída da VERIFICAÇÃO no campo Status execução deste HTML (ou no PR).</li>
+      <li>OS sem evidência de comando = não concluída. Front fatiado de propósito (22 páginas).</li>
+    </ul>
+  </div>
+</section>
+
+<section>
+  <div class="section-title"><span class="tick"></span>Timeline executivo</div>
+  <div class="timeline-legend"><span><i class="dot done"></i>Concluído</span><span><i class="dot current"></i>Em execução</span><span><i class="dot pending"></i>Pendente</span></div>
+  <div class="timeline-wrap">
+    <div class="timeline-steps">
+      <div class="timeline-step current"><span class="timeline-num">01</span><div class="timeline-node">1</div><div class="timeline-title">AR + ADRs (WF-01)</div><div class="timeline-meta">este chat</div><span class="timeline-badge">Em execução</span></div>
+      <div class="timeline-step pending"><span class="timeline-num">02</span><div class="timeline-node">2</div><div class="timeline-title">Reescrita .NET + PG</div><div class="timeline-meta">WF-02 a WF-12</div><span class="timeline-badge">Pendente</span></div>
+      <div class="timeline-step pending"><span class="timeline-num">03</span><div class="timeline-node">3</div><div class="timeline-title">Front React desliga mocks</div><div class="timeline-meta">WF-13 a WF-17</div><span class="timeline-badge">Pendente</span></div>
+      <div class="timeline-step pending"><span class="timeline-num">04</span><div class="timeline-node">4</div><div class="timeline-title">Docker local</div><div class="timeline-meta">WF-18 a WF-20</div><span class="timeline-badge">Pendente</span></div>
+      <div class="timeline-step pending"><span class="timeline-num">05</span><div class="timeline-node">5</div><div class="timeline-title">Gate E2E</div><div class="timeline-meta">WF-21</div><span class="timeline-badge">Pendente</span></div>
+      <div class="timeline-step pending"><span class="timeline-num">06</span><div class="timeline-node">6</div><div class="timeline-title">Preparar AWS</div><div class="timeline-meta">WF-22 · sem deploy</div><span class="timeline-badge">Pendente</span></div>
+    </div>
+  </div>
+  <div class="timeline-cards">
+    <div class="card"><div class="card-titulo">Fase atual</div><p><b>WF-01 Architecture Review</b><br>Plano + scores C1/C2 entregues neste chat.</p></div>
+    <div class="card vanilla"><div class="card-titulo">Próximo marco</div><p><b>WF-02 Walking skeleton</b><br>Novo chat · agente Ricardo · branch wf-02-skeleton</p></div>
+    <div class="card mint"><div class="card-titulo">Próxima ação</div><p><b>Ratificar D01–D05</b> abaixo, depois copiar a OS do WF-02.</p></div>
+  </div>
+</section>
+
+<section>
+  <div class="section-title"><span class="tick"></span>Painel de indicadores (AR Pierre)</div>
+  <div class="stats-grid">
+    <div class="stat-card"><div class="num">3.5</div><div class="lbl">C1 Arquitetura</div></div>
+    <div class="stat-card"><div class="num">3.0</div><div class="lbl">C2 SOLID</div></div>
+    <div class="stat-card"><div class="num">22</div><div class="lbl">Itens WF</div></div>
+    <div class="stat-card total"><div class="num">0/21</div><div class="lbl">OS de código feitas</div></div>
+  </div>
+  <div class="grid grid-4">
+    <div class="kpi warn"><div class="lbl">As-Is</div><div class="val">MVP mock</div><div class="sub">Next 14 + mocks.ts + proxy KAAS Node</div></div>
+    <div class="kpi"><div class="lbl">To-Be local</div><div class="val">4 containers</div><div class="sub">db · api · worker · web</div></div>
+    <div class="kpi"><div class="lbl">Contratos spec</div><div class="val">7 rotas /v1</div><div class="sub">catálogo em mocks.ts — nenhum implementado</div></div>
+    <div class="kpi"><div class="lbl">AWS</div><div class="val">Fora desta janela</div><div class="sub">WF-22 só empacota; deploy depois do gate</div></div>
+  </div>
+</section>
+
+<section>
+  <div class="section-title"><span class="tick"></span>Architecture Review — achados</div>
+  <div class="grid grid-2">
+    <div class="card">
+      <div class="card-titulo">Estrutura atual (mapeada)</div>
+      <ul>
+        <li><code>src/app/</code> — 22 pages (UI). Sem services/.</li>
+        <li><code>src/lib/mocks.ts</code> — domínio + seed + OpenAPI (god file).</li>
+        <li><code>src/app/api/kas/*</code> — único backend, Node, chave no servidor.</li>
+        <li>Zero <code>.csproj</code>, zero PostgreSQL, zero testes.</li>
+        <li>OCR não roda neste repo. Jornada KAAS <code>testes-firmas-e-poderes</code>.</li>
+      </ul>
+    </div>
+    <div class="card mint">
+      <div class="card-titulo">Alvo (Clean Architecture .NET)</div>
+      <ul>
+        <li><code>backend/</code> — Api, Worker, Domain, Infrastructure, Tests.</li>
+        <li>Front permanece Next.js 14 (já é React). Troca mocks por HTTP.</li>
+        <li>Worker avança pipeline (pendente → OCR via KAAS → canônico → decisão).</li>
+        <li>Adapter KAAS sai do Next e entra no Worker/.NET.</li>
+        <li>Compose: postgres:16, api:8080, web:3000, worker interno.</li>
+      </ul>
+    </div>
+  </div>
+  <p class="nota-tabela">Relatório Pierre: <code>_bmad-output/reviews/REVIEW_2026-08-26_AR-refatoracao.md</code>. Score final C1+C2 ≈ 3.3 → não aprova merge de “produção”; aprova o plano de reescrita.</p>
+</section>
+
+<section>
+  <div class="section-title"><span class="tick"></span>Decisões pedidas (ratificar antes do WF-02)</div>
+  <div class="card vanilla">
+    <div class="card-titulo">Aguardando ratificação (5)</div>
+    <div class="decisao">
+      <p><b>D01.</b> Front: manter Next.js 14 ou reescrever em Vite?</p>
+      <ul class="opcoes">
+        <li><b>A</b> Manter Next.js 14 (App Router). Já é React; 22 telas prontas. <span class="opcao-rec">recomendada</span></li>
+        <li><b>B</b> Reescrever Vite (igual CheckIn). Custo alto, sem ganho de domínio.</li>
+      </ul>
+      <p class="decisao-meta">Pierre · default se não decidir: A</p>
+    </div>
+    <div class="decisao">
+      <p><b>D02.</b> Onde vive a transcrição/OCR?</p>
+      <ul class="opcoes">
+        <li><b>A</b> KAAS permanece externo; .NET só orquestra ingest/result. <span class="opcao-rec">recomendada</span></li>
+        <li><b>B</b> Portar OCR para .NET (Document AI/Tesseract). Fora desta janela.</li>
+      </ul>
+      <p class="decisao-meta">já evidenciado neste repo: proxy não transcreve</p>
+    </div>
+    <div class="decisao">
+      <p><b>D03.</b> Compose local.</p>
+      <ul class="opcoes">
+        <li><b>A</b> 4 serviços: db, api, worker, web. <span class="opcao-rec">recomendada</span></li>
+        <li><b>B</b> 3 serviços: worker dentro da Api (HostedService). Mais simples, pior isolamento.</li>
+      </ul>
+    </div>
+    <div class="decisao">
+      <p><b>D04.</b> Auth na primeira entrega local.</p>
+      <ul class="opcoes">
+        <li><b>A</b> JWT + RBAC (auditor / operador / admin) no WF-05. <span class="opcao-rec">recomendada</span></li>
+        <li><b>B</b> Header mock até o compose; JWT só no AWS.</li>
+      </ul>
+    </div>
+    <div class="decisao">
+      <p><b>D05.</b> AWS.</p>
+      <ul class="opcoes">
+        <li><b>A</b> WF-22 só Dockerfiles + README de deploy. Nenhum apply na AWS nesta sequência. <span class="opcao-rec">recomendada</span></li>
+        <li><b>B</b> Incluir ECS/RDS agora — infla contexto e depende de conta.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="section-title"><span class="tick"></span>Efeito WOW e pior cenário</div>
+  <div class="grid grid-2">
+    <div class="card mint">
+      <div class="card-titulo">Efeito WOW</div>
+      <p><code>docker compose up</code> sobe PG + API + worker + Next. Upload PDF → 202 → pipeline visível → JSON KAAS persistido → decisão APROVADO/REPROVADO/MANUAL na tela que hoje é mock. Trilha por <code>correlationId</code>.</p>
+    </div>
+    <div class="card">
+      <div class="card-titulo">Pior cenário</div>
+      <ul>
+        <li>Tentar .NET + 22 telas + Docker + AWS no mesmo chat → perda de contexto (motivo deste fatiamento).</li>
+        <li>Contingência: parar no WF-12 (API + seed) com Swagger; front ainda mock; compose db+api só.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="section-title"><span class="tick"></span>Plano de atividades (Axx → WFxx)</div>
+  <div class="tabela-wrap">
+    <table class="tabela-atividades">
+      <thead>
+        <tr class="grupos"><th colspan="3">Identificação</th><th colspan="2">Execução</th></tr>
+        <tr><th>ID</th><th>Fase</th><th>Item</th><th>Agente</th><th>Status</th></tr>
+      </thead>
+      <tbody>
+        <tr><td class="center"><b>A01</b></td><td>AR / ADRs</td><td>Architecture Review + este plano</td><td>Pierre</td><td class="center"><span class="chip" style="background:#FFE2A9;color:#7A4F00">Em execução</span></td></tr>
+        <tr><td class="center"><b>A02</b></td><td>Reescrita</td><td>Esqueleto .NET + PG (walking skeleton)</td><td>Ricardo</td><td class="center"><span class="chip" style="background:#E8E7E2;color:#555463">A fazer</span></td></tr>
+        <tr><td class="center"><b>A03</b></td><td>Reescrita</td><td>Matriz de contratos (mocks.ts = spec)</td><td>Escritor Back</td><td class="center"><span class="chip" style="background:#E8E7E2;color:#555463">A fazer</span></td></tr>
+        <tr><td class="center"><b>A04</b></td><td>Reescrita</td><td>Modelo PostgreSQL + EF Core</td><td>Ricardo</td><td class="center"><span class="chip" style="background:#E8E7E2;color:#555463">A fazer</span></td></tr>
+        <tr><td class="center"><b>A05</b></td><td>Reescrita</td><td>Fundação transversal (JWT, health, Swagger, audit)</td><td>Ricardo</td><td class="center"><span class="chip" style="background:#E8E7E2;color:#555463">A fazer</span></td></tr>
+        <tr><td class="center"><b>A06</b></td><td>Reescrita</td><td>Módulos Documents / KAAS / Canônico / Decisão / Audit / Authority</td><td>Ricardo</td><td class="center"><span class="chip" style="background:#E8E7E2;color:#555463">A fazer</span></td></tr>
+        <tr><td class="center"><b>A07</b></td><td>Front</td><td>Cliente HTTP + 4 fatias de tela (sem god chat)</td><td>Sofia</td><td class="center"><span class="chip" style="background:#E8E7E2;color:#555463">A fazer</span></td></tr>
+        <tr><td class="center"><b>A08</b></td><td>Pack</td><td>Compose + seed + README</td><td>DevOps + Ricardo</td><td class="center"><span class="chip" style="background:#E8E7E2;color:#555463">A fazer</span></td></tr>
+        <tr><td class="center"><b>A09</b></td><td>Gate</td><td>E2E compose + roteiro demo</td><td>Pierre</td><td class="center"><span class="chip" style="background:#E8E7E2;color:#555463">A fazer</span></td></tr>
+        <tr><td class="center"><b>A10</b></td><td>Pós-local</td><td>Preparar AWS (sem deploy)</td><td>DevOps</td><td class="center"><span class="chip" style="background:#F7F6F2;color:#B0AEAD">Depois do gate</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section>
+  <div class="section-title"><span class="tick"></span>Riscos</div>
+  <div class="tabela-wrap"><table>
+    <thead><tr><th>ID</th><th>Risco</th><th>Impacto</th><th>Mitigação</th></tr></thead>
+    <tbody>
+      <tr><td><b>RK-01</b></td><td>Um chat tenta o monólito inteiro e o agente esquece contratos KAAS/JWT.</td><td class="center"><span class="chip" style="background:#FF5315;color:#fff">Alto</span></td><td>22 OS. Copiar bloco escuro. Branch por item.</td></tr>
+      <tr><td><b>RK-02</b></td><td>Jornada KAAS não ramifica <code>action=result</code>.</td><td class="center"><span class="chip" style="background:#FFE2A9;color:#181828">Médio</span></td><td>WF-07 documenta contrato; dono da jornada confirma.</td></tr>
+      <tr><td><b>RK-03</b></td><td>Chave <code>KAS_API_KEY</code> vazar para o browser ou git.</td><td class="center"><span class="chip" style="background:#FF5315;color:#fff">Alto</span></td><td>Só no Worker/.NET. Secret no compose/AWS. Nunca no Next.</td></tr>
+      <tr><td><b>RK-04</b></td><td>Reescrever Vite “porque o plano CheckIn proibiu Next”.</td><td class="center"><span class="chip" style="background:#FFE2A9;color:#181828">Médio</span></td><td>D01-A. CheckIn era Django→Vite. Aqui o front já é React/Next.</td></tr>
+      <tr><td><b>RK-05</b></td><td>AWS no meio da refatoração.</td><td class="center"><span class="chip" style="background:#FF5315;color:#fff">Alto</span></td><td>D05-A. Compose local é o gate.</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section>
+  <div class="section-title"><span class="tick"></span>Scorecard de decisão (gate local)</div>
+  <div class="tabela-wrap"><table>
+    <thead><tr><th>Critério</th><th style="border-bottom:3px solid var(--mint)">Go</th><th style="border-bottom:3px solid var(--vanilla)">Pivot</th><th style="border-bottom:3px solid var(--orange)">Kill</th></tr></thead>
+    <tbody>
+      <tr><td>Compose</td><td>4 serviços healthy</td><td>db+api healthy; worker/web com workaround</td><td>Não sobe</td></tr>
+      <tr><td>Upload</td><td>POST /v1/documents → 202 + linha no PG</td><td>Só Swagger</td><td>Ainda só sessionStorage</td></tr>
+      <tr><td>KAAS</td><td>Ingest + JSON persistido + correlationId</td><td>JSON na API, tela mock</td><td>Chave no client</td></tr>
+      <tr><td>Decisão</td><td>GET /v1/authority/decision com evidências</td><td>Seed estático no PG</td><td>Só mock na UI</td></tr>
+      <tr><td>Audit</td><td>GET /v1/audit/trail por correlationId</td><td>Tabela existe, UI não lê</td><td>Sem trilha</td></tr>
+      <tr><td>AWS</td><td>Fora do gate. WF-22 documentado</td><td>—</td><td>Deploy sem compose verde</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="workflow-execucao">
+  <div class="section-title"><span class="tick"></span>Workflow de execução · ordens de serviço</div>
+  <p class="section-lead">22 itens (WF-01 a WF-22). Copie o bloco escuro para outro chat com o agente indicado. Atualize Status execução após a verificação.</p>
+  <div class="card mint" style="margin-bottom:14px;">
+    <div class="card-titulo">Decisões fixas (todas as OS)</div>
+<pre class="wf-os" style="max-height:220px;">DECISOES FIXAS (validas em todos os workflows)
+1. Repositorio: BBF---Firmas-e-Poderes (branch ProjetoBBF como base; cada OS abre wf-NN-slug).
+2. Spec executavel = UI Next.js + src/lib/mocks.ts + docs de pipeline. Nao apagar as telas. Desligar mocks por fatia.
+3. Stack alvo: ASP.NET Core 8 + EF Core + Npgsql + PostgreSQL 16 + React/Next.js 14 (D01-A). Sem Dapper, sem SQL Server.
+4. Compose local: 4 containers — db (5432), api (8080), worker (sem porta), web (3000). KAAS e servico externo.
+5. OCR/transcricao: KAAS jornada testes-firmas-e-poderes. .NET orquestra ingest (action=ingest) e result (action=result).
+6. Fuso: America/Sao_Paulo. timestamptz em UTC na persistencia; conversao na borda da API.
+7. Portas: db 5432, api 8080, web 3000. Nao usar 8000 (conflito comum) nem expor o worker.
+8. Arquivos compose: compose.dev.yaml (so db) e compose.yaml (4 servicos). Nao commitar .env com KAS_API_KEY.
+9. Chave KAAS so no Worker/Api (env). Proibido NEXT_PUBLIC_ para a chave.
+10. AWS e etapa posterior (WF-22). Nenhuma OS faz terraform/apply.
+11. Um branch por item, commit convencional. OS nao escreve no branch da outra.
+12. Toda OS de codigo termina com VERIFICACAO executada e saida colada. Sem evidencia = nao concluida.
+13. Idioma: Portugues do Brasil (arquivo, tela, Enviando). Nao usar PT-PT.
+14. correlationId BBF (corr_uuid) e obrigatorio em toda chamada de pipeline; executionId do KAAS e opcional.</pre>
+  </div>
+  <div class="wf-nav">
+    <a href="#wf-01">WF-01</a><a href="#wf-02">WF-02</a><a href="#wf-03">WF-03</a><a href="#wf-04">WF-04</a>
+    <a href="#wf-05">WF-05</a><a href="#wf-06">WF-06</a><a href="#wf-07">WF-07</a><a href="#wf-08">WF-08</a>
+    <a href="#wf-09">WF-09</a><a href="#wf-10">WF-10</a><a href="#wf-11">WF-11</a><a href="#wf-12">WF-12</a>
+    <a href="#wf-13">WF-13</a><a href="#wf-14">WF-14</a><a href="#wf-15">WF-15</a><a href="#wf-16">WF-16</a>
+    <a href="#wf-17">WF-17</a><a href="#wf-18">WF-18</a><a href="#wf-19">WF-19</a><a href="#wf-20">WF-20</a>
+    <a href="#wf-21">WF-21</a><a href="#wf-22">WF-22</a>
+  </div>
+
+<article class="wf-item aprovado" id="wf-01">
+<div class="wf-head"><h3>WF-01 · Architecture Review + plano de OS</h3>
+<span class="chip wf-status" style="background:#89BAB1;color:#181828">Entrega deste chat</span></div>
+<dl class="wf-grid">
+  <dt>Origem</dt><dd>Pedido AR Pierre + anexo plano.html (CheckIn) como molde de fatiamento.</dd>
+  <dt>Objetivo</dt><dd>Fixar As-Is, To-Be, scores C1/C2 e a lista de chats. Nao escrever .cs nesta OS.</dd>
+  <dt>Aceite</dt><dd>HTML em docs/plano-execucao-refatoracao.html; review em _bmad-output/reviews/; 22 OS copiaveis; D01–D05 visiveis.</dd>
+  <dt>Agente</dt><dd>Pierre · Agents DownStream/tech-lead-peer-review.md</dd>
+  <dt>Status</dt><dd>Concluido ao abrir este arquivo no browser.</dd>
+</dl>
+<pre class="wf-os">ORDEM DE SERVICO - BBF Firmas e Poderes
+Workflow WF-01/22 - Architecture Review + plano
+Agente: Pierre | ja executado neste chat (26/08/2026)
+
+SAIDA:
+- docs/plano-execucao-refatoracao.html
+- _bmad-output/reviews/REVIEW_2026-08-26_AR-refatoracao.md
+
+NAO FAZER: criar .sln, Docker, AWS, apagar mocks, reescrever Vite.</pre>
+</article>
+
+<article class="wf-item" id="wf-02">
+<div class="wf-head"><h3>WF-02 · Esqueleto executável (walking skeleton)</h3>
+<span class="chip wf-status" style="background:#E8E7E2;color:#555463">A fazer · próximo chat</span></div>
+<dl class="wf-grid">
+  <dt>Dependências</dt><dd>WF-01 + D01–D05 (default A se silêncio).</dd>
+  <dt>Agente</dt><dd>Ricardo · Agents DownStream/dev-dotnet-esp.md</dd>
+  <dt>Artefatos</dt><dd>backend/ (sln, Api, Domain, Infrastructure, Tests) + compose.dev.yaml</dd>
+</dl>
+<pre class="wf-os">ORDEM DE SERVICO - BBF Firmas e Poderes
+Workflow WF-02/22 - Esqueleto executavel
+Agente: Ricardo (.NET) | 00_SOLUTION AGENTS/Agents DownStream/dev-dotnet-esp.md
+Branch: wf-02-skeleton
+Leia antes: docs/plano-execucao-refatoracao.html (decisoes fixas 1-14)
+
+PASSOS:
+1. Criar backend/BbfFirmasPoderes.sln com Api, Domain, Infrastructure, Tests.
+2. Npgsql + AppDbContext vazio. Connection string por env ConnectionStrings__Postgres.
+3. compose.dev.yaml so com db postgres:16, porta 5432, healthcheck pg_isready, volume nomeado.
+4. Migration InitialCreate sem entidades de negocio. Aplicar.
+5. GET /health/live e /health/ready (ready checa o banco).
+6. Teste xUnit de fumaca (WebApplicationFactory + /health/live).
+7. README backend/README.md com comandos.
+8. Api escuta 8080.
+
+VERIFICACAO (colar saida):
+1. docker compose -f compose.dev.yaml up -d db
+2. dotnet build backend/BbfFirmasPoderes.sln
+3. dotnet test backend/
+4. curl -i http://localhost:8080/health/live
+
+NAO FAZER: entidades de negocio, KAAS, JWT, Next, AWS, Dapper, SQL Server, Vite.</pre>
+</article>
+
+<article class="wf-item" id="wf-03">
+<div class="wf-head"><h3>WF-03 · Matriz de contratos (mocks.ts = spec)</h3>
+<span class="chip wf-status" style="background:#E8E7E2;color:#555463">A fazer</span></div>
+<dl class="wf-grid">
+  <dt>Agente</dt><dd>Escritor Back · Agents UpStream/the-writer-back.md</dd>
+  <dt>Aceite</dt><dd>Uma linha por rota de openApiEndpoints + rotas KAAS internas. Sem célula “diversos”.</dd>
+</dl>
+<pre class="wf-os">ORDEM DE SERVICO - BBF Firmas e Poderes
+Workflow WF-03/22 - Matriz de paridade API
+Agente: Escritor Back | Agents UpStream/the-writer-back.md
+Branch: wf-03-matriz-api
+
+ENTRADAS: src/lib/mocks.ts (openApiEndpoints, Document, DecisionRecord, AuditEvent);
+src/app/api/kas/run/route.ts; src/app/api/kas/return/route.ts; src/app/envio/page.tsx
+
+PASSOS:
+1. Tabela: metodo, rota, payload in/out, status, perfil RBAC, regra, arquivo de origem.
+2. Cobrir as 7 rotas /v1/* do mock + POST interno KAAS ingest/result.
+3. Incluir POST /v1/documents 202 (nao 200 sincrono).
+4. Documentar correlationId e Idempotency-Key.
+5. Salvar docs/arquitetura/WF-03_MAPA_PARIDADE_API.md
+
+NAO FAZER: C#, React, Docker. So contrato.</pre>
+</article>
+
+<article class="wf-item" id="wf-04">
+<div class="wf-head"><h3>WF-04 · Modelo PostgreSQL 16 + EF Core</h3>
+<span class="chip wf-status" style="background:#E8E7E2;color:#555463">A fazer</span></div>
+<pre class="wf-os">ORDEM DE SERVICO - BBF Firmas e Poderes
+Workflow WF-04/22 - Modelo PostgreSQL + migrations
+Agente: Ricardo | branch wf-04-ef-model
+Depende: WF-02, WF-03
+
+PASSOS:
+1. Entidades a partir de mocks.ts: Document, Person, Power, Decision, AuditEvent, KasRun (jsonb do retorno KAAS).
+2. timestamptz UTC. CNPJ/CPF mascaraveis. Hash do arquivo.
+3. Status do pipeline = enum string igual DocStatus do front.
+4. Migration + seed minimo 1 documento ACME (dados de mocks doc_001).
+5. Diagrama ER em docs/arquitetura/ER.md (tabelas e FKs).
+
+VERIFICACAO: dotnet ef database update; \dt no psql lista as tabelas.
+
+NAO FAZER: controllers de negocio alem do necessario para seed, KAAS live, AWS.</pre>
+</article>
+
+<article class="wf-item" id="wf-05">
+<div class="wf-head"><h3>WF-05 · Fundação transversal da API</h3>
+<span class="chip wf-status" style="background:#E8E7E2;color:#555463">A fazer</span></div>
+<pre class="wf-os">ORDEM DE SERVICO - BBF Firmas e Poderes
+Workflow WF-05/22 - JWT, RBAC, erro, log, Swagger, correlation
+Agente: Ricardo | branch wf-05-foundation
+Depende: WF-02
+
+PASSOS:
+1. JWT (issuer/audience env). Perfis: operador, auditor, admin, consumer.
+2. ProblemDetails. Log com mascara de CPF/CNPJ.
+3. Middleware X-Correlation-Id (gera se ausente).
+4. Swagger so do que existir. Serilog.
+5. Interceptor de audit (append-only) para comandos.
+
+VERIFICACAO: GET /swagger; chamada sem token = 401; auditor acessa /health.
+
+NAO FAZER: upload, KAAS, telas Next.</pre>
+</article>
+
+<article class="wf-item" id="wf-06">
+<div class="wf-head"><h3>WF-06 · Módulo Documents</h3>
+<span class="chip wf-status" style="background:#E8E7E2;color:#555463">A fazer</span></div>
+<pre class="wf-os">ORDEM DE SERVICO - BBF Firmas e Poderes
+Workflow WF-06/22 - Documents
+Agente: Ricardo | branch wf-06-documents
+Depende: WF-04, WF-05
+
+PASSOS:
+1. POST /v1/documents multipart → 202 { documentId, status: pendente, correlationId }.
+2. Guardar blob (filesystem volume ./data/docs ou bytea se &lt; 50MB — preferir volume).
+3. GET /v1/documents e GET /v1/documents/{id}/status.
+4. Nao processar OCR no request (fila/outbox para o worker).
+5. Testes: 415, 422 tamanho, 202 happy path.
+
+VERIFICACAO: curl POST arquivo + GET status = pendente no PG.
+
+NAO FAZER: chamar KAAS ainda (WF-07), decisao, front.</pre>
+</article>
+
+<article class="wf-item" id="wf-07">
+<div class="wf-head"><h3>WF-07 · Worker + adapter KAAS</h3>
+<span class="chip wf-status" style="background:#E8E7E2;color:#555463">A fazer</span></div>
+<pre class="wf-os">ORDEM DE SERVICO - BBF Firmas e Poderes
+Workflow WF-07/22 - Worker pipeline + KAAS
+Agente: Ricardo | branch wf-07-kaas-worker
+Depende: WF-06
+Ler: src/lib/kas-client.ts, src/app/api/kas/run/route.ts, src/app/api/kas/return/route.ts
+
+PASSOS:
+1. Projeto Worker. Consome outbox de documentos pendentes.
+2. POST KAAS mode=sync payload.action=ingest + correlationId + document_url.
+3. Persistir JSON em KasRun. Avancar status processando_ocr → … conforme payload.
+4. Segundo POST action=result na MESMA jornada (contrato ja acordado).
+5. Header X-Flow-Api-Key so no worker. Timeout 300s.
+6. Remover a chave do caminho Next (rotas /api/kas viram proxy opcional deprecado ou passam a chamar a Api .NET).
+
+VERIFICACAO: teste de integracao com WireMock/fake KAAS; sem chave real no teste.
+
+NAO FAZER: AWS, tela /envio (Sofia WF-17), Dapper.</pre>
+</article>
+
+<article class="wf-item" id="wf-08">
+<div class="wf-head"><h3>WF-08 · Canônico (pessoas e poderes)</h3>
+<span class="chip wf-status" style="background:#E8E7E2;color:#555463">A fazer</span></div>
+<pre class="wf-os">ORDEM DE SERVICO - BBF Firmas e Poderes
+Workflow WF-08/22 - Modelo canonico
+Agente: Ricardo | branch wf-08-canonical
+Depende: WF-04, WF-07 (JSON KAAS como input)
+
+PASSOS:
+1. Mapear JSON KAAS → Person[] e Power[] (schema canonicalSchemaPreview em mocks.ts).
+2. GET /v1/documents/{id}/canonical.
+3. sourceTrace (pagina, offset, snippet) persistido.
+4. Se KAAS nao vier estruturado: status revisao_humana.
+
+VERIFICACAO: seed ACME devolve 3 socios e 2 poderes como no mock.
+
+NAO FAZER: motor de regras de decisao (WF-09).</pre>
+</article>
+
+<article class="wf-item" id="wf-09">
+<div class="wf-head"><h3>WF-09 · Decisão + replay</h3>
+<span class="chip wf-status" style="background:#E8E7E2;color:#555463">A fazer</span></div>
+<pre class="wf-os">ORDEM DE SERVICO - BBF Firmas e Poderes
+Workflow WF-09/22 - Decision evaluate + replay
+Agente: Ricardo | branch wf-09-decision
+Depende: WF-08
+
+PASSOS:
+1. POST /v1/decision/evaluate → APROVADO | REPROVADO | MANUAL + motivos + evidencias + versions snapshot.
+2. POST /v1/decision/{id}/replay deterministico (mesmo snapshot).
+3. Regras minimas alinhadas ao mock (limite isolada vs conjunta). Documentar regras em Domain.
+4. Testes unitarios das regras com ACME.
+
+VERIFICACAO: evaluate ACME movimentacao financeira Diretor → APROVADO; replay identico.
+
+NAO FAZER: Junta Comercial real (health mock/circuit WF-11).</pre>
+</article>
+
+<article class="wf-item" id="wf-10">
+<div class="wf-head"><h3>WF-10 · Audit trail</h3>
+<span class="chip wf-status" style="background:#E8E7E2;color:#555463">A fazer</span></div>
+<pre class="wf-os">ORDEM DE SERVICO - BBF Firmas e Poderes
+Workflow WF-10/22 - Audit
+Agente: Ricardo | branch wf-10-audit
+Depende: WF-05
+
+PASSOS:
+1. GET /v1/audit/trail filtros documentId, correlationId, from, to. Perfil auditor.
+2. Tabela append-only. Sem UPDATE/DELETE.
+3. Eventos: document.uploaded, ocr.completed, canonical.ready, decision.evaluated, kas.ingest, kas.result.
+
+VERIFICACAO: 403 para operador; 200 para auditor apos upload.
+
+NAO FAZER: tela /audit (Sofia WF-16).</pre>
+</article>
+
+<article class="wf-item" id="wf-11">
+<div class="wf-head"><h3>WF-11 · API pública de autoridade + health fontes</h3>
+<span class="chip wf-status" style="background:#E8E7E2;color:#555463">A fazer</span></div>
+<pre class="wf-os">ORDEM DE SERVICO - BBF Firmas e Poderes
+Workflow WF-11/22 - GET /v1/authority/decision + /v1/verification/health
+Agente: Ricardo | branch wf-11-authority
+Depende: WF-09
+
+PASSOS:
+1. GET /v1/authority/decision?cnpj&amp;operation&amp;signers. Headers X-Correlation-Id, Idempotency-Key.
+2. Escopo OAuth consumer. 429 placeholder ( AspNetRateLimit ou middleware simples).
+3. GET /v1/verification/health — fontes oficiais: stub com circuit breaker aberto/fechado (sem Junta real).
+
+VERIFICACAO: 200 ACME; 400 params; 401 sem token.
+
+NAO FAZER: implementar Junta Comercial HTTP real.</pre>
+</article>
+
+<article class="wf-item" id="wf-12">
+<div class="wf-head"><h3>WF-12 · Gate de verificação do backend</h3>
+<span class="chip wf-status" style="background:#E8E7E2;color:#555463">A fazer</span></div>
+<dl class="wf-grid"><dt>Agente</dt><dd>Pierre [PR] no recorte backend/</dd></dl>
+<pre class="wf-os">ORDEM DE SERVICO - BBF Firmas e Poderes
+Workflow WF-12/22 - Gate backend
+Agente: Pierre | branch so leitura; nao merge se C4 &lt; 6
+Depende: WF-06 a WF-11
+
+PASSOS:
+1. Peer Review completo no backend/ (12 categorias, foco C4 seguranca).
+2. Exigir: zero secret no git, testes verdes, Swagger cobre /v1 implementado.
+3. Relatorio _bmad-output/reviews/REVIEW_WF-12_backend.md
+
+NAO FAZER: escrever features novas. So gate.</pre>
+</article>
+
+<article class="wf-item" id="wf-13">
+<div class="wf-head"><h3>WF-13 · Front: shell, tokens, cliente HTTP</h3>
+<span class="chip wf-status" style="background:#E8E7E2;color:#555463">A fazer</span></div>
+<pre class="wf-os">ORDEM DE SERVICO - BBF Firmas e Poderes
+Workflow WF-13/22 - Front fundacao
+Agente: Sofia | Agents DownStream/dev-reactjs-esp.md
+Branch: wf-13-front-client
+Depende: WF-12 (API no ar) ou pelo menos WF-05+WF-06
+
+PASSOS:
+1. src/lib/api.ts (fetch para NEXT_PUBLIC_API_URL=http://localhost:8080).
+2. Tipos a partir do dominio (extrair interfaces de mocks.ts para src/domain/ sem o seed).
+3. Auth: guardar JWT; interceptor 401.
+4. Nao migrar telas ainda. Sidebar inalterado.
+5. .env.local.example com NEXT_PUBLIC_API_URL. Sem chave KAAS.
+
+VERIFICACAO: chamada /health/live no browser (dev) retorna 200.
+
+NAO FAZER: reescrever Vite/MUI/Redux; nao apagar mocks.ts ainda (seed visual).</pre>
+</article>
+
+<article class="wf-item" id="wf-14">
+<div class="wf-head"><h3>WF-14 · Front: dashboard + upload</h3>
+<span class="chip wf-status" style="background:#E8E7E2;color:#555463">A fazer</span></div>
+<pre class="wf-os">ORDEM DE SERVICO - BBF Firmas e Poderes
+Workflow WF-14/22 - Dashboard
+Agente: Sofia | branch wf-14-dashboard
+Depende: WF-13, WF-06
+Arquivos: src/app/page.tsx apenas (+ hooks se precisar)
+
+PASSOS:
+1. Lista de documentos via GET /v1/documents. KPI pode continuar mock se endpoint nao existir — senão stub /v1/metrics depois.
+2. Upload chama POST /v1/documents (Api .NET), nao /api/kas/run.
+3. Manter dropzone e limite 50 MB.
+
+VERIFICACAO: upload aparece na lista apos F5 (persistencia PG, nao so sessionStorage).
+
+NAO FAZER: pages de detalhe, admin, envio KAAS.</pre>
+</article>
+
+<article class="wf-item" id="wf-15">
+<div class="wf-head"><h3>WF-15 · Front: detalhe documento + pipeline</h3>
+<span class="chip wf-status" style="background:#E8E7E2;color:#555463">A fazer</span></div>
+<pre class="wf-os">ORDEM DE SERVICO - BBF Firmas e Poderes
+Workflow WF-15/22 - Documents detail
+Agente: Sofia | branch wf-15-doc-detail
+Arquivos: src/app/documents/** apenas
+
+PASSOS:
+1. Ligar status, socios, poderes, canonical, history ao GET da API.
+2. Poll GET .../status enquanto processando_*.
+3. 404 se API nao achar (hoje sessionStorage some).
+
+NAO FAZER: decision/, audit/, admin/.</pre>
+</article>
+
+<article class="wf-item" id="wf-16">
+<div class="wf-head"><h3>WF-16 · Front: decisão, filas, auditoria</h3>
+<span class="chip wf-status" style="background:#E8E7E2;color:#555463">A fazer</span></div>
+<pre class="wf-os">ORDEM DE SERVICO - BBF Firmas e Poderes
+Workflow WF-16/22 - Decision + audit UI
+Agente: Sofia | branch wf-16-decision-audit
+Arquivos: src/app/decision, review-queue, manual-queue, audit, api-helper
+
+PASSOS:
+1. Decision e helper consomem /v1/authority/decision e /v1/decision/*.
+2. Audit consome /v1/audit/trail.
+3. Filas: filtrar documentos por status na API.
+
+NAO FAZER: admin rules engine novo; /envio.</pre>
+</article>
+
+<article class="wf-item" id="wf-17">
+<div class="wf-head"><h3>WF-17 · Front: /envio KAAS + admin restante</h3>
+<span class="chip wf-status" style="background:#E8E7E2;color:#555463">A fazer</span></div>
+<pre class="wf-os">ORDEM DE SERVICO - BBF Firmas e Poderes
+Workflow WF-17/22 - Envio KAAS via API .NET
+Agente: Sofia | branch wf-17-envio-admin
+Arquivos: src/app/envio, kas-result, admin/**, demais pages orfas
+
+PASSOS:
+1. /envio chama Api .NET (que aciona worker), nao mais /api/kas/run direto.
+2. Devolver JSON = POST result ja feito no worker; botao vira "forcar result" se necessario.
+3. Ligar admin/observability ao que existir; resto permanece mock COM banner "nao persistido".
+4. Apagar sessionStorage como fonte de verdade.
+
+NAO FAZER: AWS, Vite.</pre>
+</article>
+
+<article class="wf-item" id="wf-18">
+<div class="wf-head"><h3>WF-18 · Segurança (checklist)</h3>
+<span class="chip wf-status" style="background:#E8E7E2;color:#555463">A fazer</span></div>
+<pre class="wf-os">ORDEM DE SERVICO - BBF Firmas e Poderes
+Workflow WF-18/22 - Security Guardian
+Agente: Security Guardian | Agents Habilitadores/the-security-guardian.md
+Branch: wf-18-security (so PRs de correção)
+
+PASSOS:
+1. OWASP: secrets, path traversal do blob, JWT, CORS, upload content-type.
+2. Confirmar KAS_API_KEY ausente do bundle Next.
+3. Relatorio _bmad-output/reviews/REVIEW_WF-18_security.md
+
+NAO FAZER: features. C4 &lt; 6 = bloqueio Pierre.</pre>
+</article>
+
+<article class="wf-item" id="wf-19">
+<div class="wf-head"><h3>WF-19 · Compose local (4 containers)</h3>
+<span class="chip wf-status" style="background:#E8E7E2;color:#555463">A fazer</span></div>
+<pre class="wf-os">ORDEM DE SERVICO - BBF Firmas e Poderes
+Workflow WF-19/22 - Docker compose
+Agente: DevOps Master | Agents Habilitadores/the-devops-master.md
+Branch: wf-19-compose
+Depende: WF-07, WF-14 no minimo
+
+PASSOS:
+1. compose.yaml: db, api, worker, web.
+2. Dockerfiles backend e Next (output standalone).
+3. Healthchecks. Rede interna. Volume docs + pgdata.
+4. env_file .env.example.
+
+VERIFICACAO:
+docker compose up -d --build
+docker compose ps  (4 healthy)
+curl http://localhost:8080/health/ready
+curl -I http://localhost:3000
+
+NAO FAZER: ECS, RDS, push para registry AWS.</pre>
+</article>
+
+<article class="wf-item" id="wf-20">
+<div class="wf-head"><h3>WF-20 · Seed de demonstração + README operação</h3>
+<span class="chip wf-status" style="background:#E8E7E2;color:#555463">A fazer</span></div>
+<pre class="wf-os">ORDEM DE SERVICO - BBF Firmas e Poderes
+Workflow WF-20/22 - Seed + README
+Agente: Ricardo | branch wf-20-seed
+Depende: WF-04, WF-19
+
+PASSOS:
+1. Seed ACME + 1 REPROVADO + 1 MANUAL (espelhar mocks docs 001/004/003).
+2. Usuario demo operador/auditor (senhas so no .env.example).
+3. README raiz: compose up, login, roteiro 8 passos da demo.
+
+VERIFICACAO: compose down -v && up; seed aplica; login demo funciona.
+
+NAO FAZER: AWS.</pre>
+</article>
+
+<article class="wf-item" id="wf-21">
+<div class="wf-head"><h3>WF-21 · Gate E2E + ensaio da demo</h3>
+<span class="chip wf-status" style="background:#E8E7E2;color:#555463">A fazer</span></div>
+<pre class="wf-os">ORDEM DE SERVICO - BBF Firmas e Poderes
+Workflow WF-21/22 - Gate ponta a ponta
+Agente: Pierre | [PR] + roteiro
+Depende: WF-18, WF-19, WF-20
+
+PASSOS:
+1. Executar roteiro README (upload, pipeline, decisao, audit).
+2. Scorecard do HTML: Go/Pivot/Kill.
+3. Relatorio REVIEW_WF-21_e2e.md. Sem Go = nao abrir WF-22.
+
+NAO FAZER: terraform.</pre>
+</article>
+
+<article class="wf-item" id="wf-22">
+<div class="wf-head"><h3>WF-22 · Preparar AWS (sem deploy)</h3>
+<span class="chip wf-status" style="background:#F7F6F2;color:#B0AEAD">Depois do gate</span></div>
+<pre class="wf-os">ORDEM DE SERVICO - BBF Firmas e Poderes
+Workflow WF-22/22 - Preparar AWS
+Agente: DevOps Master
+Branch: wf-22-aws-prep
+Depende: WF-21 Go
+
+PASSOS:
+1. Documentar alvo: ECS Fargate ou App Runner + RDS PostgreSQL + Secrets Manager (KAS_API_KEY, JWT).
+2. compose.prod.yaml ou task defs de exemplo. Sem apply.
+3. Checklist de env. Nao commitar secrets.
+
+NAO FAZER: aws ecs create-service, terraform apply, push em main desprotegida.</pre>
+</article>
+
+</section>
+</main>
+<footer class="footer">
+  <span>Foursys · BBF Firmas e Poderes · Pierre AR 26/08/2026 · molde: plano.html CheckIn (OS por chat)</span>
+  <span>Próximo: copiar WF-02 · Ricardo</span>
+</footer>
+</div>
+</body>
+</html>

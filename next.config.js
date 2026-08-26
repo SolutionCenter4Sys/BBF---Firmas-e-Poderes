@@ -2,7 +2,8 @@
 const nextConfig = {
   reactStrictMode: true,
   experimental: {
-    typedRoutes: false
+    typedRoutes: false,
+    serverActions: { bodySizeLimit: "50mb" }
   }
 };
 

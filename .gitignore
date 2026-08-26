@@ -8,3 +8,15 @@ out
 .env.production.local
 *.log
 .DS_Store
+
+# .NET
+[Bb]in/
+[Oo]bj/
+.vs/
+*.user
+*.suo
+backend/.idea/
+
+# blobs WF-06
+/data/
+backend/src/BbfFirmasPoderes.Api/data/

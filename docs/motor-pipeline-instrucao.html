@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Como instalar o motor de pipeline — BBF Firmas e Poderes</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --navy: #222239;
+      --navy-soft: #2e2e4a;
+      --navy-deep: #181828;
+      --orange: #FF5315;
+      --orange-soft: #ff7848;
+      --mint: #89BAB1;
+      --vanilla: #FFE2A9;
+      --off-white: #F7F6F2;
+      --white: #FFFFFF;
+      --grey-light: #E8E7E2;
+      --grey-dark: #555463;
+      --font: "Nunito", Helvetica, Arial, sans-serif;
+      --shadow: 0 4px 18px rgba(34, 34, 57, 0.10);
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      font-family: var(--font);
+      background: var(--off-white);
+      color: var(--navy-deep);
+      font-size: 11pt;
+      line-height: 1.6;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    .brand-bar {
+      height: 6px;
+      background: linear-gradient(90deg, var(--navy) 0%, var(--orange) 100%);
+      -webkit-print-color-adjust: exact;
+    }
+    header.capa {
+      background: var(--navy);
+      color: var(--white);
+      padding: 2rem 2.25rem 1.75rem;
+    }
+    .logo-svg { height: 42px; width: auto; display: block; }
+    header.capa .eyebrow {
+      color: var(--orange);
+      font-size: 0.75rem;
+      font-weight: 800;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      margin: 1.1rem 0 0.4rem;
+    }
+    header.capa h1 {
+      margin: 0;
+      font-size: 1.85rem;
+      font-weight: 900;
+      line-height: 1.15;
+      letter-spacing: -0.4px;
+    }
+    header.capa .lead {
+      margin: 0.7rem 0 0;
+      max-width: 720px;
+      color: rgba(255, 255, 255, 0.82);
+      font-weight: 400;
+    }
+    .meta {
+      margin-top: 1.1rem;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+    .badge {
+      display: inline-block;
+      padding: 0.22rem 0.7rem;
+      border-radius: 999px;
+      font-weight: 800;
+      font-size: 0.72rem;
+    }
+    .badge-orange { background: var(--orange); color: #fff; }
+    .badge-mint { background: var(--mint); color: var(--navy); }
+    .badge-vanilla { background: var(--vanilla); color: var(--navy); }
+    .badge-ghost { background: rgba(255,255,255,0.12); color: #fff; border: 1px solid rgba(255,255,255,0.2); }
+    main { max-width: 980px; margin: 0 auto; padding: 1.5rem 1.5rem 3rem; }
+    nav.toc {
+      background: var(--white);
+      border-left: 4px solid var(--orange);
+      border-radius: 0 10px 10px 0;
+      box-shadow: var(--shadow);
+      padding: 1.1rem 1.3rem;
+      margin-bottom: 1.75rem;
+    }
+    nav.toc h2 { margin: 0 0 0.6rem; font-size: 1rem; }
+    nav.toc ol { margin: 0; padding-left: 1.2rem; }
+    nav.toc a { color: var(--navy); font-weight: 700; text-decoration: none; }
+    nav.toc a:hover { color: var(--orange); }
+    .section { margin-bottom: 2.2rem; }
+    .section .brand-bar { margin-bottom: 0.85rem; border-radius: 3px; }
+    .eyebrow {
+      color: var(--orange);
+      font-size: 0.72rem;
+      font-weight: 800;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      margin: 0 0 0.25rem;
+    }
+    h2 { margin: 0 0 0.75rem; font-size: 1.45rem; font-weight: 800; color: var(--navy); }
+    h3 { margin: 1.25rem 0 0.45rem; font-size: 1.05rem; font-weight: 800; color: var(--navy); }
+    p { margin: 0 0 0.75rem; }
+    ul, ol { margin: 0 0 0.85rem; padding-left: 1.25rem; }
+    li { margin-bottom: 0.3rem; }
+    .card {
+      background: var(--white);
+      border-left: 4px solid var(--orange);
+      border-radius: 0 10px 10px 0;
+      box-shadow: var(--shadow);
+      padding: 1rem 1.15rem;
+      margin: 0.85rem 0;
+    }
+    .card.mint { border-left-color: var(--mint); }
+    .card.vanilla { border-left-color: var(--vanilla); background: rgba(255, 226, 169, 0.18); }
+    .card h3 { margin-top: 0; }
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    @media (max-width: 760px) { .grid-2 { grid-template-columns: 1fr; } }
+    table { width: 100%; border-collapse: collapse; font-size: 0.88rem; margin: 0.6rem 0 1rem; }
+    th, td { border: 1px solid var(--grey-light); padding: 0.55rem 0.65rem; text-align: left; vertical-align: top; }
+    th {
+      background: var(--navy);
+      color: #fff;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      font-size: 0.72rem;
+      border-bottom: 3px solid var(--orange);
+    }
+    tbody tr:nth-child(even) td { background: rgba(137, 186, 177, 0.08); }
+    code, pre {
+      font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
+      font-size: 0.8rem;
+    }
+    code {
+      background: var(--off-white);
+      padding: 0.08rem 0.35rem;
+      border-radius: 4px;
+      color: var(--navy);
+    }
+    pre {
+      background: var(--navy-deep);
+      color: #f0f0f0;
+      padding: 0.9rem 1rem;
+      border-radius: 8px;
+      overflow-x: auto;
+      line-height: 1.45;
+      border-left: 4px solid var(--orange);
+    }
+    .flow {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem;
+      align-items: center;
+      margin: 0.8rem 0 1rem;
+    }
+    .flow span.step {
+      background: var(--navy);
+      color: #fff;
+      padding: 0.35rem 0.7rem;
+      border-radius: 8px;
+      font-size: 0.78rem;
+      font-weight: 700;
+    }
+    .flow span.arrow { color: var(--orange); font-weight: 900; }
+    footer {
+      border-top: 3px solid var(--orange);
+      padding: 1.1rem 1.5rem 1.4rem;
+      text-align: center;
+      color: var(--grey-dark);
+      font-size: 0.8rem;
+      background: var(--white);
+    }
+    footer strong { color: var(--navy); }
+    @media print {
+      header.capa { -webkit-print-color-adjust: exact; }
+      nav.toc { break-after: page; }
+      .section { break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+  <div class="brand-bar"></div>
+  <header class="capa">
+    <svg class="logo-svg" viewBox="0 0 260 60" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Foursys">
+      <text x="0" y="48" font-family="Nunito, Helvetica, sans-serif" font-weight="900" font-size="52" fill="rgba(255,255,255,0.92)" letter-spacing="-1.2">foursys</text>
+      <g stroke="#FF5315" stroke-width="6.5" stroke-linecap="square" stroke-linejoin="miter" fill="none" transform="translate(198 6)">
+        <path d="M 0 18 L 16 32 L 0 46"/>
+        <path d="M 18 4 L 34 18 L 18 32"/>
+      </g>
+    </svg>
+    <p class="eyebrow">Instrução técnica · Solution Center</p>
+    <h1>Como instalar o motor de pipeline que está faltando</h1>
+    <p class="lead">Guia de leitura do BBF Firmas e Poderes (Orquestrador). Explica por que o upload para em <em>pendente</em> e como montar o motor — simulador de demo ou backend real (Step 12).</p>
+    <div class="meta">
+      <span class="badge badge-orange">Cliente · BBF / Bradesco</span>
+      <span class="badge badge-ghost">Repo · BBF---Firmas-e-Poderes</span>
+      <span class="badge badge-mint">Stack UI · Next.js 14</span>
+      <span class="badge badge-vanilla">Data · 23/08/2026</span>
+    </div>
+  </header>
+
+  <main>
+    <nav class="toc" aria-label="Índice">
+      <h2>Índice</h2>
+      <ol>
+        <li><a href="#s1">O que isto não é (e o que é)</a></li>
+        <li><a href="#s2">Por que o processamento para</a></li>
+        <li><a href="#s3">O que o motor precisa fazer</a></li>
+        <li><a href="#s4">Contrato já desenhado no frontend</a></li>
+        <li><a href="#s5">Dois caminhos: demo vs. motor real</a></li>
+        <li><a href="#s6">Como montar o motor real (passos)</a></li>
+        <li><a href="#s7">Como ligar o Next.js</a></li>
+        <li><a href="#s8">Como rodar o conjunto localmente</a></li>
+        <li><a href="#s9">O que não resolve</a></li>
+        <li><a href="#s10">Recomendação prática</a></li>
+      </ol>
+    </nav>
+
+    <section class="section" id="s1">
+      <div class="brand-bar"></div>
+      <p class="eyebrow">Seção 01</p>
+      <h2>O que isto não é (e o que é)</h2>
+      <div class="card vanilla">
+        <p><strong>Não existe</strong> um comando do tipo <code>npm install pipeline</code>. Neste repositório o motor <strong>nunca foi escrito</strong>.</p>
+        <p style="margin:0">O README descreve o estado atual como <strong>Step 6 — Frontend MVP com Mock</strong>. Os dados vêm de <code>src/lib/mocks.ts</code>. O backend REST está previsto só no <strong>Step 12</strong>.</p>
+      </div>
+      <p>O “motor” é um <strong>orquestrador assíncrono</strong>: o upload não processa o PDF no clique. A API aceita o ficheiro (HTTP 202), grava o documento e uma <strong>fila + workers</strong> avançam os estágios (OCR → IA → canónico → decisão).</p>
+      <p>Hoje a UI só <em>pinta</em> o status. Sem API que mude esse status, o ficheiro enviado fica em <code>pendente</code> para sempre.</p>
+    </section>
+
+    <section class="section" id="s2">
+      <div class="brand-bar"></div>
+      <p class="eyebrow">Seção 02</p>
+      <h2>Por que o processamento para</h2>
+      <p>Ao clicar em <strong>+ Novo upload</strong>, o dashboard atual:</p>
+      <ol>
+        <li>Não envia o ficheiro a nenhum servidor (<code>fetch</code> / <code>FormData</code> inexistentes).</li>
+        <li>Não guarda os bytes do PDF — só o nome do arquivo.</li>
+        <li>Cria um cartão em memória / <code>sessionStorage</code> com <code>status: "pendente"</code>.</li>
+        <li>Mostra o banner “Pipeline iniciado” — mensagem <strong>enganosa</strong>: não há worker, timer nem fila.</li>
+      </ol>
+      <p>A barra em <code>PipelineStatusBar.tsx</code> mapeia <code>pendente</code> apenas para o passo <strong>1. Upload</strong>. Os documentos da lista que já aparecem “decididos” são <strong>fixtures</strong> estáticos em <code>mocks.ts</code>, não passaram por upload real.</p>
+    </section>
+
+    <section class="section" id="s3">
+      <div class="brand-bar"></div>
+      <p class="eyebrow">Seção 03</p>
+      <h2>O que o motor precisa fazer</h2>
+      <div class="flow" aria-label="Fluxo do pipeline">
+        <span class="step">1 Upload</span><span class="arrow">→</span>
+        <span class="step">2 OCR</span><span class="arrow">→</span>
+        <span class="step">3 IA Gen / NER</span><span class="arrow">→</span>
+        <span class="step">4 Canónico</span><span class="arrow">→</span>
+        <span class="step">5 Decisão</span>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>Ordem</th>
+            <th>Estágio (UI)</th>
+            <th>Status no código</th>
+            <th>Trabalho real</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>1</td>
+            <td>Upload</td>
+            <td><code>pendente</code></td>
+            <td>Guardar ficheiro, antivírus, gerar <code>documentId</code> e <code>correlationId</code></td>
+          </tr>
+          <tr>
+            <td>2</td>
+            <td>OCR</td>
+            <td><code>processando_ocr</code></td>
+            <td>PDF/imagem → texto + páginas + CER</td>
+          </tr>
+          <tr>
+            <td>3</td>
+            <td>IA Gen / NER</td>
+            <td><code>processando_iagen</code> / <code>processando_ner</code></td>
+            <td>Extrair CNPJ, sócios, poderes, limites, modo de assinatura</td>
+          </tr>
+          <tr>
+            <td>4</td>
+            <td>Canónico + oficial</td>
+            <td><code>canonico_pronto</code> / <code>validacao_oficial</code></td>
+            <td>JSON canónico + consulta Junta / Receita</td>
+          </tr>
+          <tr>
+            <td>5</td>
+            <td>Decisão</td>
+            <td><code>decidido</code> / <code>revisao_humana</code> / <code>falha</code></td>
+            <td>Regras (RN01, TH01…) → APROVADO / REPROVADO / MANUAL</td>
+          </tr>
+        </tbody>
+      </table>
+      <p>Serviços que o próprio mock já nomeia (observabilidade e custos):</p>
+      <table>
+        <thead>
+          <tr><th>Serviço</th><th>Papel</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>orchestration-api</code></td><td>Orquestra a fila e o estado do documento</td></tr>
+          <tr><td><code>ai-ocr-service</code></td><td>OCR — mock cita Google Document AI e fallback Tesseract</td></tr>
+          <tr><td><code>decision-engine</code></td><td>Aplica regras de decisão</td></tr>
+          <tr><td><code>verification-service</code></td><td>Fontes oficiais (Junta, Receita, listas PEP)</td></tr>
+          <tr><td><code>audit-service</code></td><td>Trilha imutável de eventos</td></tr>
+        </tbody>
+      </table>
+      <p>Nenhum destes nomes está no <code>package.json</code> do frontend. São backends a construir ou a ligar a APIs internas BBF/Bradesco.</p>
+    </section>
+
+    <section class="section" id="s4">
+      <div class="brand-bar"></div>
+      <p class="eyebrow">Seção 04</p>
+      <h2>Contrato já desenhado no frontend</h2>
+      <p>O array <code>openApiEndpoints</code> em <code>src/lib/mocks.ts</code> é o contrato do Step 12. Instalar o motor = implementar estes endpoints + workers, e o Next deixar de usar <code>sessionStorage</code>.</p>
+
+      <h3>Upload — inicia o pipeline</h3>
+      <pre>POST /v1/documents
+Content-Type: multipart/form-data
+X-Correlation-Id: opcional
+
+file = &lt;PDF ou imagem, até 50 MB&gt;</pre>
+      <p>Resposta <strong>202 Accepted</strong>:</p>
+      <pre>{
+  "documentId": "doc_xxx",
+  "status": "pendente",
+  "uploadedAt": "2026-04-30T..."
+}</pre>
+
+      <h3>Polling do progresso</h3>
+      <pre>GET /v1/documents/{documentId}/status</pre>
+      <p>Devolve o <code>DocStatus</code> atual. A UI consulta até chegar a <code>decidido</code>, <code>falha</code> ou <code>revisao_humana</code>.</p>
+
+      <h3>Outros endpoints já previstos</h3>
+      <ul>
+        <li><code>GET /v1/authority/decision</code> — decisão para jornada consumidora</li>
+        <li><code>POST /v1/decision/evaluate</code> — avaliação interna (UI)</li>
+        <li><code>POST /v1/decision/{id}/replay</code> — replay determinístico</li>
+        <li><code>GET /v1/audit/trail</code> — trilha por <code>correlationId</code></li>
+        <li><code>GET /v1/verification/health</code> — saúde das fontes oficiais</li>
+      </ul>
+    </section>
+
+    <section class="section" id="s5">
+      <div class="brand-bar"></div>
+      <p class="eyebrow">Seção 05</p>
+      <h2>Dois caminhos: demo vs. motor real</h2>
+      <div class="grid-2">
+        <div class="card mint">
+          <h3>A) Simulador local (demo)</h3>
+          <p>Não chama OCR nem Junta. Um timer no browser (ou uma API Route do Next) muda o status:</p>
+          <p><code>pendente</code> → <code>processando_ocr</code> → <code>processando_iagen</code> → <code>canonico_pronto</code> → <code>decidido</code></p>
+          <p style="margin:0">Copia sócios/poderes de um mock (ex.: <code>doc_001</code>). A barra “anda”. <strong>Não lê o PDF.</strong> Não é o Step 12. Serve para usabilidade e apresentação.</p>
+        </div>
+        <div class="card">
+          <h3>B) Motor real (produto)</h3>
+          <p>Vários processos + fila + storage + secrets. O ficheiro é processado de facto.</p>
+          <p style="margin:0">Não cabe num <code>npm install</code> no frontend. É um projeto de backend (orquestração + 4–5 serviços), alinhado ao contrato da seção 04.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="s6">
+      <div class="brand-bar"></div>
+      <p class="eyebrow">Seção 06</p>
+      <h2>Como montar o motor real (passos)</h2>
+
+      <h3>Passo 0 — Stack (este repo é só UI)</h3>
+      <p>O frontend é Next.js 14. O motor <strong>não deve</strong> viver só no browser: PDF + chaves de IA no cliente é inseguro e incompatível com LGPD.</p>
+      <p>Padrão alinhado ao mock e ao deploy atual (Azure Static Web Apps):</p>
+      <ul>
+        <li>API HTTP (Node, Java ou .NET — o que o BBF padronizar)</li>
+        <li>Fila (Azure Service Bus, RabbitMQ ou Redis)</li>
+        <li>Object storage (Azure Blob)</li>
+        <li>Base relacional (Postgres ou SQL Server) para documento, status, canónico e auditoria</li>
+      </ul>
+
+      <h3>Passo 1 — Persistência mínima</h3>
+      <table>
+        <thead>
+          <tr><th>Tabela</th><th>Conteúdo</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>documents</code></td><td>id, nome, hash, status, correlation_id, uploaded_by</td></tr>
+          <tr><td><code>document_blobs</code></td><td>URI no Blob Storage</td></tr>
+          <tr><td><code>extractions</code></td><td>texto OCR, scores ocr / iagen / ner</td></tr>
+          <tr><td><code>canonical</code></td><td>JSON pessoas/poderes (ver <code>canonicalSchemaPreview</code>)</td></tr>
+          <tr><td><code>decisions</code></td><td>resultado + motivos + snapshot de regras</td></tr>
+          <tr><td><code>audit_events</code></td><td>append-only: uploaded, ocr.completed, etc.</td></tr>
+        </tbody>
+      </table>
+
+      <h3>Passo 2 — Implementar <code>POST /v1/documents</code></h3>
+      <ol>
+        <li>Validar tipo (PDF/imagem) e tamanho (50 MB).</li>
+        <li>Antivírus (já prometido no dropzone da UI).</li>
+        <li>Gravar blob + hash.</li>
+        <li>Inserir documento com <code>status = pendente</code>.</li>
+        <li>Publicar na fila: <code>{ documentId, correlationId }</code>.</li>
+        <li>Responder <strong>202</strong> — não esperar o OCR.</li>
+      </ol>
+      <p>O dashboard passa a chamar esta API em vez de <code>addSessionDocument</code>.</p>
+
+      <h3>Passo 3 — Worker / orquestrador (o motor)</h3>
+      <p>Um processo consome a fila e corre os estágios em série (saga com compensação se um passo falhar):</p>
+      <pre>pendente
+  → processando_ocr        (Document AI ou Tesseract)
+  → processando_iagen      (LLM + schema de extração)
+  → processando_ner        (CPF, cargo, limite, N de M)
+  → canonico_pronto        (normalizar para o schema)
+  → validacao_oficial      (Junta / Receita + circuit breaker)
+  → decision-engine        (RN01, TH01, …)
+  → decidido | revisao_humana | falha</pre>
+      <p>A cada estágio o worker deve:</p>
+      <ol>
+        <li>Atualizar <code>status</code> na base.</li>
+        <li>Escrever evento de auditoria.</li>
+        <li>Se score &lt; threshold (regra <strong>TH01</strong>): ir para <code>revisao_humana</code> e <strong>parar</strong> até a fila humana.</li>
+        <li>Se exceção: <code>falha</code> + devolver <code>correlationId</code> (já previsto no detalhe de falha da UI).</li>
+      </ol>
+      <p><code>GET /v1/documents/{id}/status</code> apenas lê a base. O frontend faz poll (ex.: a cada 2 s) ou WebSocket.</p>
+
+      <h3>Passo 4 — “Instalar” os motores de cada estágio</h3>
+      <p>Aqui sim há instalações / contratações — <strong>uma por estágio</strong>, não um produto único.</p>
+      <table>
+        <thead>
+          <tr>
+            <th>Estágio</th>
+            <th>O que se instala ou contrata</th>
+            <th>Nota deste projeto</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>OCR</td>
+            <td>Google Document AI e/ou Tesseract</td>
+            <td>O mock de custo já cita os dois</td>
+          </tr>
+          <tr>
+            <td>IA Gen</td>
+            <td>Azure OpenAI, Vertex ou API interna BBF</td>
+            <td>PII — dados no tenant do banco</td>
+          </tr>
+          <tr>
+            <td>NER</td>
+            <td>Modelo próprio, spaCy ou o mesmo LLM com schema</td>
+            <td>Status <code>processando_ner</code></td>
+          </tr>
+          <tr>
+            <td>Fontes oficiais</td>
+            <td>Conectores Junta / Receita / PEP</td>
+            <td>Tela <code>/sources/health</code> + circuit breaker</td>
+          </tr>
+          <tr>
+            <td>Regras</td>
+            <td>Código, Drools ou serviço interno</td>
+            <td>Catálogo em <code>/admin/rules</code></td>
+          </tr>
+          <tr>
+            <td>Fila + Blob</td>
+            <td>Azure Service Bus + Blob Storage</td>
+            <td>Alinhado ao workflow GitHub → SWA</td>
+          </tr>
+        </tbody>
+      </table>
+      <p>Cada integração precisa de conta cloud, secret em <strong>Key Vault / variável de ambiente</strong> (nunca no frontend) e um adapter no <code>orchestration-api</code>.</p>
+      <div class="card vanilla">
+        <h3>Laboratório de OCR (não é produção bancária)</h3>
+        <pre>pip install pypdf pytesseract
+# + Tesseract OCR instalado no Windows</pre>
+        <p style="margin:0">Isto não substitui Document AI em produção. Serve só para provar o fluxo localmente.</p>
+      </div>
+    </section>
+
+    <section class="section" id="s7">
+      <div class="brand-bar"></div>
+      <p class="eyebrow">Seção 07</p>
+      <h2>Como ligar o Next.js ao motor</h2>
+      <ol>
+        <li>Definir base da API, ex.: <code>NEXT_PUBLIC_API_BASE=http://localhost:8080</code> (ou BFF em <code>src/app/api/</code> como proxy).</li>
+        <li>Trocar <code>ingestFiles</code> por <code>POST /v1/documents</code> com <code>FormData</code>.</li>
+        <li>Trocar a lista e o detalhe (<code>documents</code> / <code>findDocument</code>) por <code>GET</code> reais.</li>
+        <li>Fazer polling em <code>/documents/[id]</code> até status terminal.</li>
+        <li>Auth: o mock já prevê <strong>OAuth2</strong> e scopes (<code>401</code> / <code>403</code>).</li>
+      </ol>
+      <p>Enquanto essa API não existir, o Step 12 <strong>não está instalado</strong>.</p>
+    </section>
+
+    <section class="section" id="s8">
+      <div class="brand-bar"></div>
+      <p class="eyebrow">Seção 08</p>
+      <h2>Como rodar o conjunto localmente</h2>
+      <p>Topologia típica (ainda <strong>não</strong> existe <code>docker-compose</code> neste frontend):</p>
+      <table>
+        <thead>
+          <tr><th>Endereço</th><th>Processo</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>localhost:3000</code></td><td>Next.js — UI (já existe neste repo)</td></tr>
+          <tr><td><code>localhost:8080</code></td><td><code>orchestration-api</code> (a criar)</td></tr>
+          <tr><td><code>localhost:6379</code></td><td>Redis (fila) ou emulador Service Bus / Azurite</td></tr>
+          <tr><td><code>localhost:5432</code></td><td>Postgres</td></tr>
+        </tbody>
+      </table>
+      <pre># UI — raiz deste repositório (não use "cd frontend")
+npm install
+npm run dev
+# http://localhost:3000
+
+# API + worker — outro serviço / repo (ainda não está neste Git)
+docker compose up</pre>
+      <p>O backend precisa ser criado noutro módulo ou repositório. Este Git hoje só hospeda a UI.</p>
+    </section>
+
+    <section class="section" id="s9">
+      <div class="brand-bar"></div>
+      <p class="eyebrow">Seção 09</p>
+      <h2>O que não resolve o problema</h2>
+      <ul>
+        <li>Instalar mais uma biblioteca no Next com <code>npm install</code></li>
+        <li>Enviar o mesmo PDF de novo</li>
+        <li>Azure Static Web Apps — só faz <strong>host</strong> da interface</li>
+        <li>BMAD / agentes de review — geram documentação, não OCR</li>
+      </ul>
+    </section>
+
+    <section class="section" id="s10">
+      <div class="brand-bar"></div>
+      <p class="eyebrow">Seção 10</p>
+      <h2>Recomendação prática</h2>
+      <table>
+        <thead>
+          <tr><th>Objetivo</th><th>O que fazer</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Demo / usabilidade (a barra anda)</td>
+            <td>Simulador no frontend (timers + mocks). Horas, não semanas.</td>
+          </tr>
+          <tr>
+            <td>Homologar extração de um PDF real</td>
+            <td>Worker mínimo: <code>POST /v1/documents</code> + Tesseract ou Document AI + poll de status.</td>
+          </tr>
+          <tr>
+            <td>Produção BBF (Step 12)</td>
+            <td>Orquestrador + serviços + Blob + fila + OAuth + Junta/Receita + motor de regras. Projeto de backend.</td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="card mint">
+        <h3>Resumo em uma frase</h3>
+        <p style="margin:0">O motor em falta é o <strong>backend assíncrono</strong> do contrato <code>/v1/documents</code> mais os workers OCR → IA → canónico → decisão. Ou se <strong>simula</strong> o avanço de status, ou se <strong>constrói</strong> essa API. Não se instala como dependência deste repositório.</p>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <strong>Foursys</strong> · Solution Center · Instrução técnica BBF Firmas e Poderes<br />
+    Documento gerado em 23/08/2026 · Uso interno · Design system Foursys (Nunito · navy · laranja)
+  </footer>
+</body>
+</html>

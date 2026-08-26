@@ -16,6 +16,8 @@ const groups: NavGroup[] = [
     title: "Operação",
     items: [
       { href: "/", label: "Dashboard" },
+      { href: "/envio", label: "Enviar para o KAAS" },
+      { href: "/kas-result", label: "Retorno KAAS" },
       { href: "/review-queue", label: "Revisão humana" },
       { href: "/manual-queue", label: "Análise manual" }
     ]
@@ -38,6 +40,12 @@ const groups: NavGroup[] = [
     items: [
       { href: "/admin/operations", label: "Operações" },
       { href: "/admin/rules", label: "Regras de decisão" }
+    ]
+  },
+  {
+    title: "Planejamento",
+    items: [
+      { href: "/plano.html", label: "Plano de execução (HTML)" }
     ]
   },
   {
@@ -66,16 +74,22 @@ export default function Sidebar() {
             <div style={{ fontSize: 11, textTransform: "uppercase", color: "var(--color-text-muted)", padding: "0 12px 6px 12px", letterSpacing: 0.5, fontWeight: 600 }}>
               {g.title}
             </div>
-            {g.items.map((it) => (
-              <Link
-                key={it.href}
-                href={it.href}
-                className={pathname === it.href ? "active" : ""}
-                style={{ display: "block" }}
-              >
-                {it.label}
-              </Link>
-            ))}
+            {g.items.map((it) =>
+              it.href.endsWith(".html") ? (
+                <a key={it.href} href={it.href} target="_blank" rel="noreferrer" style={{ display: "block" }}>
+                  {it.label}
+                </a>
+              ) : (
+                <Link
+                  key={it.href}
+                  href={it.href}
+                  className={pathname === it.href || (it.href !== "/" && pathname.startsWith(it.href)) ? "active" : ""}
+                  style={{ display: "block" }}
+                >
+                  {it.label}
+                </Link>
+              )
+            )}
           </div>
         ))}
       </nav>

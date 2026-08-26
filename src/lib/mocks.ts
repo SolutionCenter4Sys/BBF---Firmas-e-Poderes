@@ -200,8 +200,25 @@ export const metrics = {
   documentsInQueue: 4
 };
 
+const SESSION_UPLOADS_KEY = "bbf-fp-session-uploads";
+
+export function getSessionDocuments(): Document[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = sessionStorage.getItem(SESSION_UPLOADS_KEY);
+    return raw ? (JSON.parse(raw) as Document[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function addSessionDocument(doc: Document): void {
+  if (typeof window === "undefined") return;
+  sessionStorage.setItem(SESSION_UPLOADS_KEY, JSON.stringify([doc, ...getSessionDocuments()]));
+}
+
 export function findDocument(id: string): Document | undefined {
-  return documents.find((d) => d.documentId === id);
+  return documents.find((d) => d.documentId === id) ?? getSessionDocuments().find((d) => d.documentId === id);
 }
 
 export function findDecisionByDocumentId(documentId: string): DecisionRecord | undefined {
