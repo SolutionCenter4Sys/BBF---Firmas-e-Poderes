@@ -37,6 +37,34 @@ public sealed class FileDocumentBlobStore(IOptions<DocumentsOptions> options, IH
         return new StoredBlob(path, hash, fs.Length);
     }
 
+    public Task<byte[]> ReadAllBytesAsync(string storagePath, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(storagePath))
+            throw new FileNotFoundException("storage_path vazio.");
+
+        var root = Path.GetFullPath(ResolveRoot());
+        var path = Path.IsPathRooted(storagePath)
+            ? Path.GetFullPath(storagePath)
+            : Path.GetFullPath(Path.Combine(root, storagePath));
+
+        if (!IsInsideRoot(path, root))
+            throw new UnauthorizedAccessException("storage_path fora do StorageRoot.");
+
+        if (!File.Exists(path))
+            throw new FileNotFoundException("Blob do documento não encontrado.", path);
+
+        return File.ReadAllBytesAsync(path, cancellationToken);
+    }
+
+    internal static bool IsInsideRoot(string fullPath, string root)
+    {
+        var rootPrefix = Path.GetFullPath(root)
+            .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
+            + Path.DirectorySeparatorChar;
+        var candidate = Path.GetFullPath(fullPath);
+        return candidate.StartsWith(rootPrefix, StringComparison.OrdinalIgnoreCase);
+    }
+
     private string ResolveRoot()
     {
         var configured = options.Value.StorageRoot;

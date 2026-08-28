@@ -1,5 +1,6 @@
 "use client";
 import { useMemo, useState } from "react";
+import { MockDataBanner } from "@/components/MockDataBanner";
 import { dmnRules, type DmnRule, type RuleStatus } from "@/lib/mocks";
 
 const fmtDate = (iso: string) => new Date(iso).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
@@ -31,6 +32,8 @@ export default function RulesCatalogPage() {
           <button className="btn btn--primary">+ Propor regra</button>
         </div>
       </div>
+
+      <MockDataBanner detail="GET de regras DMN não existe. Seed visual." />
 
       <div className="grid-3">
         <div className="metric-card" style={{ borderLeftColor: "var(--color-status-approved)" }}>

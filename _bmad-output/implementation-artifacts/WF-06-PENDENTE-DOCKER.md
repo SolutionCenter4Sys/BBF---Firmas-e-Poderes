@@ -1,6 +1,6 @@
 # WF-06 — pendente Docker (evidência PG)
 
-Código e `dotnet test` (23/23) já fecham o recorte HTTP. Falta só evidência `curl` + linha `pendente` no Postgres — mesmo bloqueio WSL/engine dos WF-02/04.
+**Status (27/08/2026):** **FECHADO neste host** para o recorte HTTP+PG. POST `/v1/documents` → **202** `pendente`. Worker consumiu outbox; sem `Kas__ApiKey` o doc foi a `falha` (ingest KAAS). Seed demo não depende disso.
 
 Depois do engine verde:
 

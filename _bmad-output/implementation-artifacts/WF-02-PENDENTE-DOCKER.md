@@ -1,8 +1,7 @@
 # WF-02 — pendência Docker (executar depois)
 
 **Branch:** `wf-02-skeleton`  
-**Status:** esqueleto .NET pronto. Migration `InitialCreate` **criada**, **não aplicada**.  
-**Motivo:** Docker Desktop sem engine Linux. WSL 2 não instalado nesta máquina (`wsl -l` → "não está instalado").
+**Status (27/08/2026):** **FECHADO neste host.** Compose `bbf-db` healthy; API `/health/ready` → **200 Healthy**. Migrations aplicadas no boot (`Database__MigrateOnStartup=true`).
 
 ## O que já está verde (sem Docker)
 

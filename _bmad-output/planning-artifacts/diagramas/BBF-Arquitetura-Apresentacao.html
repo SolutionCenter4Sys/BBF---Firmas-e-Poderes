@@ -1,0 +1,800 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>BBF Firmas e Poderes — Arquitetura da plataforma</title>
+  <style>
+    :root {
+      --navy: #222239;
+      --navy-soft: #2e2e4a;
+      --navy-deep: #181828;
+      --orange: #FF5315;
+      --mint: #89BAB1;
+      --vanilla: #FFE2A9;
+      --off-white: #F7F6F2;
+      --grey-light: #E8E7E2;
+      --grey-dark: #555463;
+      --white: #FFFFFF;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      width: 100%;
+      height: 100%;
+      background: var(--navy-deep);
+      font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+      color: var(--navy);
+      overflow: hidden;
+    }
+    .deck { width: 100vw; height: 100vh; position: relative; background: #181828; }
+    .slide {
+      display: none;
+      width: 100vw;
+      height: 100vh;
+      align-items: center;
+      justify-content: center;
+      background: #181828;
+    }
+    .slide.on { display: flex; }
+    .slide svg { width: 100%; height: 100%; background: #F7F6F2; }
+    .cover {
+      width: 100%;
+      height: 100%;
+      background: #222239;
+      color: #fff;
+      padding: 7vh 8vw 10vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+    .brand-bar { position: absolute; top: 0; left: 0; right: 0; height: 6px; background: #FF5315; }
+    .kicker { color: #FF5315; letter-spacing: 3px; font-weight: 700; font-size: clamp(12px, 1.3vw, 16px); }
+    .cover h1 {
+      font-size: clamp(36px, 4.6vw, 72px);
+      font-weight: 800;
+      line-height: 1.08;
+      max-width: 16ch;
+      margin: 2vh 0 1.5vh;
+    }
+    .cover .sub {
+      font-size: clamp(16px, 1.8vw, 24px);
+      color: #FFE2A9;
+      max-width: 42ch;
+    }
+    .meta {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1.4vw;
+      margin-top: 5vh;
+    }
+    .meta div {
+      border-top: 3px solid #FF5315;
+      padding-top: 1.2vh;
+    }
+    .meta span { display: block; color: #89BAB1; font-size: 12px; letter-spacing: 1.4px; font-weight: 700; }
+    .meta strong { display: block; margin-top: 6px; font-size: clamp(15px, 1.5vw, 20px); font-weight: 700; }
+    .keys {
+      width: 100%;
+      height: 100%;
+      background: #F7F6F2;
+      padding: 6vh 6vw 12vh;
+      display: flex;
+      flex-direction: column;
+    }
+    .keys h2 { font-size: clamp(28px, 3.2vw, 48px); font-weight: 800; margin: 1.2vh 0 3vh; }
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 2vh 2vw;
+      flex: 1;
+    }
+    .card {
+      background: #fff;
+      border-left: 5px solid #FF5315;
+      border-radius: 12px;
+      padding: 2.4vh 1.8vw;
+      box-shadow: 0 4px 18px rgba(34,34,57,.08);
+    }
+    .card.mint { border-left-color: #89BAB1; }
+    .card.navy { border-left-color: #222239; }
+    .card h3 { font-size: clamp(18px, 1.8vw, 24px); margin-bottom: 1vh; }
+    .card p { font-size: clamp(14px, 1.35vw, 18px); color: #555463; line-height: 1.45; }
+    nav {
+      position: fixed;
+      left: 0; right: 0; bottom: 0;
+      height: 52px;
+      background: #181828;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 20px;
+      z-index: 20;
+      font-size: 13px;
+    }
+    nav button {
+      background: #FF5315;
+      color: #181828;
+      border: 0;
+      border-radius: 6px;
+      padding: 8px 16px;
+      font-weight: 800;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    nav button.ghost {
+      background: transparent;
+      color: #FFE2A9;
+      border: 1px solid #555463;
+    }
+    .dots { display: flex; gap: 8px; align-items: center; }
+    .dots i {
+      width: 9px; height: 9px; border-radius: 50%;
+      background: #555463; display: inline-block;
+    }
+    .dots i.on { background: #FF5315; }
+    .hint { color: #B0AEAD; }
+    @media print {
+      @page { size: landscape; margin: 0; }
+      nav { display: none; }
+      .slide { display: flex !important; page-break-after: always; height: 100vh; }
+    }
+  </style>
+</head>
+<body>
+  <div class="deck">
+    <section class="slide on" data-i="0">
+      <div class="cover">
+        <div class="brand-bar"></div>
+        <div>
+          <div class="kicker">PLATAFORMA BBF · BRADESCO</div>
+          <h1>Arquitetura atual<br>Firmas e Poderes</h1>
+          <p class="sub">Validação automatizada de cláusulas de firmas e poderes em documentos societários. Visão macro para público técnico e executivo.</p>
+          <div class="meta">
+            <div><span>FRONTEND</span><strong>Next.js 14</strong></div>
+            <div><span>API + WORKER</span><strong>.NET 8</strong></div>
+            <div><span>DADOS</span><strong>PostgreSQL 16</strong></div>
+            <div><span>ANÁLISE</span><strong>KAAS (Foursys)</strong></div>
+          </div>
+        </div>
+        <p style="color:#89BAB1;font-size:15px;">28/08/2026 · 4 containers na rede bbf-internal · operador e auditor</p>
+      </div>
+    </section>
+
+    <section class="slide" data-i="1"><svg viewBox="0 0 1920 1080" preserveAspectRatio="xMidYMid meet" role="img" aria-labelledby="m1t m1d">
+      <title id="m1t">BBF Firmas e Poderes — Visão macro da plataforma</title>
+      <desc id="m1d">Quatro containers Docker, operador, auditor e integração KAAS Foursys.</desc>
+      <defs>
+        <marker id="m1arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="#222239"/>
+        </marker>
+        <marker id="m1arrw" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="#FFFFFF"/>
+        </marker>
+        <marker id="m1arro" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="#FF5315"/>
+        </marker>
+      </defs>
+
+      <rect width="1920" height="1080" fill="#F7F6F2"/>
+      <rect width="1920" height="6" fill="#FF5315"/>
+
+      <text x="48" y="42" fill="#FF5315" font-size="15" font-weight="700" letter-spacing="2.4">PLATAFORMA BBF · BRADESCO</text>
+      <text x="48" y="82" fill="#222239" font-size="34" font-weight="800">Visão macro da plataforma</text>
+      <text x="1872" y="82" fill="#555463" font-size="16" text-anchor="end">4 containers · rede bbf-internal</text>
+
+      <!-- G1 Atores -->
+      <rect x="36" y="118" width="312" height="748" rx="14" fill="#FFFFFF" stroke="#E8E7E2" stroke-width="2"/>
+      <text x="56" y="148" fill="#FF5315" font-size="13" font-weight="700" letter-spacing="1.8">ATORES</text>
+
+      <rect x="56" y="172" width="272" height="150" rx="12" fill="#FFE2A9" stroke="#222239" stroke-width="2"/>
+      <text x="192" y="232" text-anchor="middle" fill="#222239" font-size="22" font-weight="800">Operador</text>
+      <text x="192" y="262" text-anchor="middle" fill="#222239" font-size="14">Upload, consulta e checagem de poderes</text>
+
+      <rect x="56" y="360" width="272" height="150" rx="12" fill="#FFE2A9" stroke="#222239" stroke-width="2"/>
+      <text x="192" y="420" text-anchor="middle" fill="#222239" font-size="22" font-weight="800">Auditor</text>
+      <text x="192" y="450" text-anchor="middle" fill="#222239" font-size="14">Trilha WORM e replay de decisão</text>
+
+      <text x="192" y="560" text-anchor="middle" fill="#555463" font-size="13">Perfis JWT desenhados.</text>
+      <text x="192" y="580" text-anchor="middle" fill="#555463" font-size="13">admin / consumer omitidos.</text>
+
+      <!-- G2 Docker -->
+      <rect x="368" y="118" width="1004" height="748" rx="14" fill="#FFFFFF" stroke="#E8E7E2" stroke-width="2"/>
+      <text x="388" y="148" fill="#FF5315" font-size="13" font-weight="700" letter-spacing="1.8">REDE INTERNA DOCKER · bbf-internal</text>
+
+      <rect x="500" y="172" width="740" height="118" rx="12" fill="#89BAB1" stroke="#222239" stroke-width="2"/>
+      <text x="870" y="214" text-anchor="middle" fill="#222239" font-size="22" font-weight="800">Frontend Web</text>
+      <text x="870" y="242" text-anchor="middle" fill="#222239" font-size="14">Next.js 14 — dashboard, envio, decisão, auditoria</text>
+      <rect x="1088" y="186" width="132" height="28" rx="6" fill="#F7F6F2" stroke="#222239" stroke-width="1"/>
+      <text x="1154" y="205" text-anchor="middle" fill="#222239" font-size="12" font-weight="700">Filas / resultado</text>
+
+      <rect x="404" y="360" width="420" height="196" rx="12" fill="#2e2e4a" stroke="#222239" stroke-width="2"/>
+      <text x="614" y="412" text-anchor="middle" fill="#FFFFFF" font-size="24" font-weight="800">API</text>
+      <text x="614" y="444" text-anchor="middle" fill="#FFFFFF" font-size="15">.NET 8 — JWT, validação, orquestração HTTP</text>
+      <text x="614" y="470" text-anchor="middle" fill="#FFE2A9" font-size="14">container api · porta 8080</text>
+      <rect x="534" y="492" width="160" height="28" rx="6" fill="#181828" stroke="#FF5315" stroke-width="1.5"/>
+      <text x="614" y="511" text-anchor="middle" fill="#FFFFFF" font-size="12" font-weight="700">Login JWT</text>
+
+      <rect x="868" y="336" width="464" height="244" rx="14" fill="#181828" stroke="#FF5315" stroke-width="4"/>
+      <text x="1100" y="392" text-anchor="middle" fill="#FF5315" font-size="13" font-weight="700" letter-spacing="2">DESTAQUE · PROCESSAMENTO</text>
+      <text x="1100" y="434" text-anchor="middle" fill="#FFFFFF" font-size="28" font-weight="800">Worker</text>
+      <text x="1100" y="470" text-anchor="middle" fill="#FFFFFF" font-size="16">.NET 8 — consome outbox e aciona KAAS</text>
+      <text x="1100" y="500" text-anchor="middle" fill="#FFE2A9" font-size="14">container worker · a API não chama o KAAS</text>
+      <text x="1100" y="534" text-anchor="middle" fill="#89BAB1" font-size="13">poll ~5s · POST sync · X-Flow-Api-Key</text>
+
+      <rect x="500" y="640" width="740" height="172" rx="12" fill="#222239" stroke="#181828" stroke-width="2"/>
+      <text x="870" y="698" text-anchor="middle" fill="#FFFFFF" font-size="24" font-weight="800">PostgreSQL</text>
+      <text x="870" y="732" text-anchor="middle" fill="#FFFFFF" font-size="15">Postgres 16 — protocolo, status, canônico, decisão, outbox, auditoria</text>
+      <text x="870" y="762" text-anchor="middle" fill="#FFE2A9" font-size="14">container db · sem porta no host · outbox é tabela, não broker</text>
+
+      <!-- G3 KAAS -->
+      <rect x="1392" y="118" width="492" height="748" rx="14" fill="#FFFFFF" stroke="#E8E7E2" stroke-width="2"/>
+      <text x="1412" y="148" fill="#FF5315" font-size="13" font-weight="700" letter-spacing="1.8">INTEGRAÇÃO EXTERNA</text>
+
+      <rect x="1420" y="336" width="436" height="244" rx="14" fill="#181828" stroke="#FF5315" stroke-width="3"/>
+      <text x="1638" y="400" text-anchor="middle" fill="#FF5315" font-size="13" font-weight="700" letter-spacing="2">FOURSYS</text>
+      <text x="1638" y="444" text-anchor="middle" fill="#FFFFFF" font-size="26" font-weight="800">KAAS (Foursys)</text>
+      <text x="1638" y="480" text-anchor="middle" fill="#FFFFFF" font-size="15">Workflow — análise do documento</text>
+      <text x="1638" y="508" text-anchor="middle" fill="#FFE2A9" font-size="14">sócios e poderes (estrutura)</text>
+      <text x="1638" y="536" text-anchor="middle" fill="#89BAB1" font-size="13">jornada testes-firmas-e-poderes</text>
+
+      <text x="1638" y="640" text-anchor="middle" fill="#555463" font-size="14">A decisão APROVADO /</text>
+      <text x="1638" y="662" text-anchor="middle" fill="#555463" font-size="14">REPROVADO / MANUAL sai do</text>
+      <text x="1638" y="684" text-anchor="middle" fill="#222239" font-size="14" font-weight="700">motor de regras na API,</text>
+      <text x="1638" y="706" text-anchor="middle" fill="#555463" font-size="14">não do KAAS.</text>
+
+      <!-- Conexões (acima dos grupos, abaixo dos nós: nós já desenhados; linhas por cima) -->
+      <!-- C1 Operador → Web -->
+      <path d="M 328 247 H 500" fill="none" stroke="#222239" stroke-width="2" marker-end="url(#m1arr)"/>
+      <rect x="352" y="218" width="120" height="22" rx="4" fill="#F7F6F2"/>
+      <text x="412" y="234" text-anchor="middle" fill="#222239" font-size="12" font-weight="600">Usa a interface</text>
+
+      <!-- C2 Auditor → Web -->
+      <path d="M 328 435 H 388 V 276 H 500" fill="none" stroke="#222239" stroke-width="2" marker-end="url(#m1arr)"/>
+      <rect x="200" y="328" width="120" height="22" rx="4" fill="#F7F6F2"/>
+      <text x="260" y="344" text-anchor="middle" fill="#222239" font-size="12" font-weight="600">Usa a interface</text>
+
+      <!-- C3 Web → API -->
+      <path d="M 700 290 V 325 H 614 V 360" fill="none" stroke="#222239" stroke-width="2" marker-end="url(#m1arrw)"/>
+      <rect x="628" y="300" width="96" height="22" rx="4" fill="#F7F6F2"/>
+      <text x="676" y="316" text-anchor="middle" fill="#222239" font-size="12" font-weight="600">HTTP + JWT</text>
+
+      <!-- C4 API → PostgreSQL -->
+      <path d="M 614 556 V 600 H 680 V 640" fill="none" stroke="#222239" stroke-width="2" marker-end="url(#m1arrw)"/>
+      <rect x="548" y="572" width="128" height="22" rx="4" fill="#F7F6F2"/>
+      <text x="612" y="588" text-anchor="middle" fill="#222239" font-size="12" font-weight="600">EF Core / Npgsql</text>
+
+      <!-- C6 Worker → PG poll -->
+      <path d="M 980 580 V 610 H 860 V 640" fill="none" stroke="#222239" stroke-width="2" stroke-dasharray="8 6" marker-end="url(#m1arrw)"/>
+      <rect x="868" y="588" width="168" height="22" rx="4" fill="#F7F6F2"/>
+      <text x="952" y="604" text-anchor="middle" fill="#222239" font-size="12" font-weight="600">Lê outbox document.uploaded</text>
+
+      <!-- C10 Worker → PG persist -->
+      <path d="M 1220 580 V 610 H 1100 V 640" fill="none" stroke="#222239" stroke-width="2" marker-end="url(#m1arrw)"/>
+      <rect x="1118" y="588" width="156" height="22" rx="4" fill="#F7F6F2"/>
+      <text x="1196" y="604" text-anchor="middle" fill="#222239" font-size="12" font-weight="600">Grava kas_runs e status</text>
+
+      <!-- C8 Worker → KAAS -->
+      <path d="M 1332 410 H 1420" fill="none" stroke="#FF5315" stroke-width="2.5" marker-end="url(#m1arro)"/>
+      <rect x="1336" y="382" width="80" height="22" rx="4" fill="#F7F6F2"/>
+      <text x="1376" y="398" text-anchor="middle" fill="#222239" font-size="11" font-weight="700">POST jornada</text>
+
+      <!-- C9 KAAS → Worker -->
+      <path d="M 1420 506 H 1332" fill="none" stroke="#FF5315" stroke-width="2.5" marker-end="url(#m1arro)"/>
+      <rect x="1330" y="512" width="88" height="22" rx="4" fill="#F7F6F2"/>
+      <text x="1374" y="528" text-anchor="middle" fill="#222239" font-size="11" font-weight="700">Resposta sync</text>
+
+      <!-- Legenda -->
+      <rect x="36" y="888" width="1848" height="148" rx="12" fill="#FFFFFF" stroke="#E8E7E2" stroke-width="2"/>
+      <text x="56" y="920" fill="#FF5315" font-size="12" font-weight="700" letter-spacing="1.8">LEGENDA</text>
+
+      <rect x="56" y="940" width="22" height="22" rx="4" fill="#FFE2A9" stroke="#222239"/>
+      <text x="86" y="957" fill="#222239" font-size="14">Atores</text>
+      <rect x="200" y="940" width="22" height="22" rx="4" fill="#89BAB1" stroke="#222239"/>
+      <text x="230" y="957" fill="#222239" font-size="14">Frontend Next.js</text>
+      <rect x="400" y="940" width="22" height="22" rx="4" fill="#2e2e4a" stroke="#222239"/>
+      <text x="430" y="957" fill="#222239" font-size="14">Backend API .NET</text>
+      <rect x="610" y="940" width="22" height="22" rx="4" fill="#181828" stroke="#FF5315" stroke-width="3"/>
+      <text x="640" y="957" fill="#222239" font-size="14">Worker .NET</text>
+      <rect x="790" y="940" width="22" height="22" rx="4" fill="#222239" stroke="#181828"/>
+      <text x="820" y="957" fill="#222239" font-size="14">PostgreSQL</text>
+      <rect x="960" y="940" width="22" height="22" rx="4" fill="#181828" stroke="#FF5315" stroke-width="2"/>
+      <text x="990" y="957" fill="#222239" font-size="14">Integração KAAS</text>
+
+      <line x1="56" y1="996" x2="120" y2="996" stroke="#222239" stroke-width="2" marker-end="url(#m1arr)"/>
+      <text x="132" y="1001" fill="#222239" font-size="14">HTTP / persistência</text>
+      <line x1="360" y1="996" x2="424" y2="996" stroke="#222239" stroke-width="2" stroke-dasharray="8 6" marker-end="url(#m1arr)"/>
+      <text x="436" y="1001" fill="#222239" font-size="14">Poll / outbox</text>
+      <line x1="600" y1="996" x2="664" y2="996" stroke="#222239" stroke-width="2" stroke-dasharray="2 6" marker-end="url(#m1arr)"/>
+      <text x="676" y="1001" fill="#222239" font-size="14">Auditoria / replay</text>
+
+      <text x="1872" y="1001" text-anchor="end" fill="#555463" font-size="13">BBF Firmas e Poderes · 28/08/2026</text>
+    </svg></section>
+    <section class="slide" data-i="2"><svg viewBox="0 0 1920 1080" preserveAspectRatio="xMidYMid meet" role="img" aria-labelledby="m2t m2d">
+      <title id="m2t">BBF Firmas e Poderes — Camadas do backend (.NET 8)</title>
+      <desc id="m2d">Organização lógica da API e do Worker: Domain, Infrastructure, dados e KAAS.</desc>
+      <defs>
+        <marker id="m2arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="#222239"/>
+        </marker>
+        <marker id="m2arro" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="#FF5315"/>
+        </marker>
+        <marker id="m2arrw" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="#FFFFFF"/>
+        </marker>
+      </defs>
+
+      <rect width="1920" height="1080" fill="#F7F6F2"/>
+      <rect width="1920" height="6" fill="#FF5315"/>
+      <text x="48" y="38" fill="#FF5315" font-size="14" font-weight="700" letter-spacing="2.4">BACKEND .NET 8 · API + WORKER</text>
+      <text x="48" y="74" fill="#222239" font-size="30" font-weight="800">Camadas do backend</text>
+      <text x="1872" y="74" fill="#555463" font-size="15" text-anchor="end">Domain · Infrastructure · sem classes</text>
+
+      <!-- G1 Host API -->
+      <rect x="36" y="96" width="1848" height="132" rx="12" fill="#FFFFFF" stroke="#E8E7E2" stroke-width="2"/>
+      <text x="56" y="118" fill="#FF5315" font-size="12" font-weight="700" letter-spacing="1.6">HOST API</text>
+      <rect x="56" y="130" width="900" height="82" rx="10" fill="#2e2e4a" stroke="#222239" stroke-width="2"/>
+      <text x="506" y="164" text-anchor="middle" fill="#FFFFFF" font-size="20" font-weight="800">Endpoints HTTP</text>
+      <text x="506" y="188" text-anchor="middle" fill="#FFE2A9" font-size="13">/v1/documents · /v1/decision · /v1/authority/decision · /v1/audit/trail</text>
+      <rect x="1000" y="130" width="860" height="82" rx="10" fill="#2e2e4a" stroke="#222239" stroke-width="2"/>
+      <text x="1430" y="164" text-anchor="middle" fill="#FFFFFF" font-size="20" font-weight="800">Auth JWT / RBAC</text>
+      <text x="1430" y="188" text-anchor="middle" fill="#FFE2A9" font-size="13">Bearer HS256 · perfis operador e auditor</text>
+
+      <!-- G2 Host Worker -->
+      <rect x="36" y="240" width="1848" height="128" rx="12" fill="#FFFFFF" stroke="#FF5315" stroke-width="2.5"/>
+      <text x="56" y="262" fill="#FF5315" font-size="12" font-weight="700" letter-spacing="1.6">HOST WORKER · DESTAQUE</text>
+      <rect x="56" y="274" width="1804" height="78" rx="10" fill="#181828" stroke="#FF5315" stroke-width="3"/>
+      <text x="958" y="308" text-anchor="middle" fill="#FFFFFF" font-size="24" font-weight="800">Outbox Worker</text>
+      <text x="958" y="334" text-anchor="middle" fill="#FFE2A9" font-size="14">BackgroundService — poll periódico da outbox · único host com cliente KAAS</text>
+
+      <!-- G3 Domain -->
+      <rect x="36" y="380" width="1848" height="122" rx="12" fill="#FFFFFF" stroke="#E8E7E2" stroke-width="2"/>
+      <text x="56" y="402" fill="#FF5315" font-size="12" font-weight="700" letter-spacing="1.6">DOMAIN</text>
+      <rect x="56" y="414" width="900" height="72" rx="10" fill="#FFFFFF" stroke="#222239" stroke-width="2"/>
+      <text x="506" y="444" text-anchor="middle" fill="#222239" font-size="18" font-weight="800">Modelo e regras</text>
+      <text x="506" y="468" text-anchor="middle" fill="#555463" font-size="13">Documento, pessoas, poderes, decisão · RN01–RN04 e TH01</text>
+      <rect x="1000" y="414" width="860" height="72" rx="10" fill="#FFFFFF" stroke="#222239" stroke-width="2"/>
+      <text x="1430" y="444" text-anchor="middle" fill="#222239" font-size="18" font-weight="800">Portas</text>
+      <text x="1430" y="468" text-anchor="middle" fill="#555463" font-size="13">Contratos: cliente KAAS e armazenamento de arquivo</text>
+
+      <!-- G4 Infrastructure -->
+      <rect x="36" y="514" width="1848" height="246" rx="12" fill="#FFFFFF" stroke="#E8E7E2" stroke-width="2"/>
+      <text x="56" y="536" fill="#FF5315" font-size="12" font-weight="700" letter-spacing="1.6">INFRASTRUCTURE</text>
+
+      <rect x="56" y="548" width="430" height="88" rx="10" fill="#E8E7E2" stroke="#222239" stroke-width="2"/>
+      <text x="271" y="582" text-anchor="middle" fill="#222239" font-size="16" font-weight="800">Ingestão de documentos</text>
+      <text x="271" y="606" text-anchor="middle" fill="#222239" font-size="12">Upload → blob + registro + outbox · 202</text>
+
+      <rect x="506" y="548" width="430" height="88" rx="10" fill="#E8E7E2" stroke="#FF5315" stroke-width="2.5"/>
+      <text x="721" y="582" text-anchor="middle" fill="#222239" font-size="16" font-weight="800">Processador Outbox/KAAS</text>
+      <text x="721" y="606" text-anchor="middle" fill="#222239" font-size="12">Consome mensagem, chama KAAS, mapeia canônico</text>
+
+      <rect x="956" y="548" width="430" height="88" rx="10" fill="#E8E7E2" stroke="#222239" stroke-width="2"/>
+      <text x="1171" y="582" text-anchor="middle" fill="#222239" font-size="16" font-weight="800">Serviço de decisão</text>
+      <text x="1171" y="606" text-anchor="middle" fill="#222239" font-size="12">Snapshot APROVADO / REPROVADO / MANUAL</text>
+
+      <rect x="1406" y="548" width="454" height="88" rx="10" fill="#E8E7E2" stroke="#222239" stroke-width="2"/>
+      <text x="1633" y="582" text-anchor="middle" fill="#222239" font-size="16" font-weight="800">Auditoria WORM</text>
+      <text x="1633" y="606" text-anchor="middle" fill="#222239" font-size="12">Append-only · recusa update/delete da trilha</text>
+
+      <rect x="56" y="652" width="430" height="88" rx="10" fill="#E8E7E2" stroke="#222239" stroke-width="2"/>
+      <text x="271" y="686" text-anchor="middle" fill="#222239" font-size="16" font-weight="800">Blob store</text>
+      <text x="271" y="710" text-anchor="middle" fill="#222239" font-size="12">Arquivo em /data/docs (API + Worker)</text>
+
+      <rect x="506" y="652" width="430" height="88" rx="10" fill="#E8E7E2" stroke="#222239" stroke-width="2"/>
+      <text x="721" y="686" text-anchor="middle" fill="#222239" font-size="16" font-weight="800">AppDbContext</text>
+      <text x="721" y="710" text-anchor="middle" fill="#222239" font-size="12">Persistência EF Core → PostgreSQL</text>
+
+      <rect x="956" y="652" width="904" height="88" rx="10" fill="#E8E7E2" stroke="#222239" stroke-width="2"/>
+      <text x="1408" y="686" text-anchor="middle" fill="#222239" font-size="16" font-weight="800">Cliente HTTP KAAS</text>
+      <text x="1408" y="710" text-anchor="middle" fill="#222239" font-size="12">POST sync · chave X-Flow-Api-Key só no Worker</text>
+
+      <!-- G5 + G6 -->
+      <rect x="36" y="772" width="900" height="116" rx="12" fill="#FFFFFF" stroke="#E8E7E2" stroke-width="2"/>
+      <text x="56" y="794" fill="#FF5315" font-size="12" font-weight="700" letter-spacing="1.6">DADOS</text>
+      <rect x="56" y="804" width="860" height="68" rx="10" fill="#222239" stroke="#181828" stroke-width="2"/>
+      <text x="486" y="834" text-anchor="middle" fill="#FFFFFF" font-size="18" font-weight="800">PostgreSQL</text>
+      <text x="486" y="856" text-anchor="middle" fill="#FFE2A9" font-size="13">Banco bbf_firmas</text>
+
+      <rect x="956" y="772" width="928" height="116" rx="12" fill="#FFFFFF" stroke="#E8E7E2" stroke-width="2"/>
+      <text x="976" y="794" fill="#FF5315" font-size="12" font-weight="700" letter-spacing="1.6">EXTERNO</text>
+      <rect x="976" y="804" width="888" height="68" rx="10" fill="#181828" stroke="#FF5315" stroke-width="3"/>
+      <text x="1420" y="834" text-anchor="middle" fill="#FFFFFF" font-size="18" font-weight="800">KAAS (Foursys)</text>
+      <text x="1420" y="856" text-anchor="middle" fill="#FFE2A9" font-size="13">Jornada testes-firmas-e-poderes</text>
+
+      <!-- Conexões -->
+      <!-- C1 Endpoints → Auth -->
+      <path d="M 956 171 H 1000" fill="none" stroke="#222239" stroke-width="2" marker-end="url(#m2arr)"/>
+      <rect x="958" y="148" width="84" height="18" rx="3" fill="#F7F6F2"/>
+      <text x="1000" y="161" text-anchor="middle" fill="#222239" font-size="11" font-weight="600">Exige Bearer</text>
+
+      <!-- C2 Endpoints → Ingestão (margem esquerda, não atravessa Domain) -->
+      <path d="M 180 212 V 228 H 24 V 592 H 56" fill="none" stroke="#222239" stroke-width="1.8" marker-end="url(#m2arr)"/>
+      <rect x="28" y="390" width="118" height="18" rx="3" fill="#F7F6F2"/>
+      <text x="87" y="403" text-anchor="middle" fill="#222239" font-size="11" font-weight="600">POST /v1/documents</text>
+
+      <!-- C8 Worker → Processador -->
+      <path d="M 721 352 V 372 H 48 V 592 H 506" fill="none" stroke="#FF5315" stroke-width="2.5" stroke-dasharray="8 6" marker-end="url(#m2arro)"/>
+      <rect x="52" y="500" width="90" height="18" rx="3" fill="#F7F6F2"/>
+      <text x="97" y="513" text-anchor="middle" fill="#222239" font-size="11" font-weight="700">ProcessNext</text>
+
+      <!-- C3 Endpoints → Serviço decisão (vão entre Domain e Infra) -->
+      <path d="M 850 212 V 228 H 24 V 522 H 1171 V 548" fill="none" stroke="#222239" stroke-width="1.8" marker-end="url(#m2arr)"/>
+      <rect x="1088" y="524" width="150" height="18" rx="3" fill="#F7F6F2"/>
+      <text x="1163" y="537" text-anchor="middle" fill="#222239" font-size="11" font-weight="600">evaluate / authority / replay</text>
+
+      <!-- C4 Endpoints → Auditoria (margem direita) -->
+      <path d="M 920 212 V 228 H 1896 V 592 H 1860" fill="none" stroke="#222239" stroke-width="1.8" marker-end="url(#m2arr)"/>
+      <rect x="1748" y="500" width="132" height="18" rx="3" fill="#F7F6F2"/>
+      <text x="1814" y="513" text-anchor="middle" fill="#222239" font-size="11" font-weight="600">GET /v1/audit/trail</text>
+
+      <!-- C5 Ingestão → Modelo -->
+      <path d="M 200 548 V 500 H 271 V 486" fill="none" stroke="#222239" stroke-width="1.8" marker-end="url(#m2arr)"/>
+      <rect x="148" y="504" width="132" height="18" rx="3" fill="#F7F6F2"/>
+      <text x="214" y="517" text-anchor="middle" fill="#222239" font-size="11" font-weight="600">Cria documento pendente</text>
+
+      <!-- C6 Ingestão → Blob -->
+      <path d="M 271 636 V 652" fill="none" stroke="#222239" stroke-width="1.8" marker-end="url(#m2arr)"/>
+      <rect x="276" y="636" width="84" height="16" rx="3" fill="#F7F6F2"/>
+      <text x="318" y="648" text-anchor="middle" fill="#222239" font-size="11" font-weight="600">Grava arquivo</text>
+
+      <!-- C7 Ingestão → AppDbContext -->
+      <path d="M 486 592 H 506 V 652" fill="none" stroke="#222239" stroke-width="1.8" marker-end="url(#m2arr)"/>
+      <rect x="488" y="628" width="108" height="16" rx="3" fill="#F7F6F2"/>
+      <text x="542" y="640" text-anchor="middle" fill="#222239" font-size="11" font-weight="600">Documento + outbox</text>
+
+      <!-- C9 Processador → Portas -->
+      <path d="M 880 592 H 920 V 450 H 1000" fill="none" stroke="#222239" stroke-width="1.8" marker-end="url(#m2arr)"/>
+      <rect x="888" y="448" width="96" height="16" rx="3" fill="#F7F6F2"/>
+      <text x="936" y="460" text-anchor="middle" fill="#222239" font-size="10" font-weight="600">Usa as portas</text>
+
+      <!-- C11 Processador → AppDbContext -->
+      <path d="M 721 636 V 652" fill="none" stroke="#222239" stroke-width="1.8" marker-end="url(#m2arr)"/>
+      <rect x="726" y="636" width="130" height="16" rx="3" fill="#F7F6F2"/>
+      <text x="791" y="648" text-anchor="middle" fill="#222239" font-size="11" font-weight="600">kas_runs + canônico</text>
+
+      <!-- C12 Serviço → Modelo -->
+      <path d="M 1100 548 V 500 H 800 V 486" fill="none" stroke="#222239" stroke-width="1.8" marker-end="url(#m2arr)"/>
+      <rect x="804" y="504" width="148" height="16" rx="3" fill="#F7F6F2"/>
+      <text x="878" y="516" text-anchor="middle" fill="#222239" font-size="10" font-weight="600">DecisionEngine (sem I/O)</text>
+
+      <!-- C13 Serviço → AppDbContext -->
+      <path d="M 956 592 H 936 V 652" fill="none" stroke="#222239" stroke-width="1.8" marker-end="url(#m2arr)"/>
+      <rect x="848" y="616" width="108" height="16" rx="3" fill="#F7F6F2"/>
+      <text x="902" y="628" text-anchor="middle" fill="#222239" font-size="11" font-weight="600">Snapshot decisão</text>
+
+      <!-- C10 Cliente HTTP → KAAS -->
+      <path d="M 1408 740 V 772 H 1420 V 804" fill="none" stroke="#FF5315" stroke-width="2.5" marker-end="url(#m2arro)"/>
+      <rect x="1328" y="752" width="72" height="16" rx="3" fill="#F7F6F2"/>
+      <text x="1364" y="764" text-anchor="middle" fill="#222239" font-size="11" font-weight="700">POST run</text>
+
+      <!-- C14 AppDbContext → PostgreSQL -->
+      <path d="M 650 740 V 772 H 486 V 804" fill="none" stroke="#222239" stroke-width="2" marker-end="url(#m2arrw)"/>
+      <rect x="520" y="752" width="56" height="16" rx="3" fill="#F7F6F2"/>
+      <text x="548" y="764" text-anchor="middle" fill="#222239" font-size="11" font-weight="600">Npgsql</text>
+
+      <!-- C16 AppDbContext → Auditoria -->
+      <path d="M 936 696 H 1406" fill="none" stroke="#222239" stroke-width="1.8" marker-end="url(#m2arr)"/>
+      <rect x="1108" y="676" width="140" height="16" rx="3" fill="#F7F6F2"/>
+      <text x="1178" y="688" text-anchor="middle" fill="#222239" font-size="11" font-weight="600">Interceptor append-only</text>
+
+      <!-- Portas → Cliente HTTP (implied by C9 "usa portas"; Cliente is the adapter) -->
+      <!-- Spec C9 is Processador → Portas only. Cliente → KAAS is C10. No extra nodes. -->
+
+      <!-- Legenda -->
+      <rect x="36" y="904" width="1848" height="140" rx="12" fill="#FFFFFF" stroke="#E8E7E2" stroke-width="2"/>
+      <text x="56" y="932" fill="#FF5315" font-size="12" font-weight="700" letter-spacing="1.8">LEGENDA</text>
+      <rect x="56" y="950" width="20" height="20" rx="4" fill="#FFE2A9" stroke="#222239"/>
+      <text x="84" y="966" fill="#222239" font-size="13">Atores</text>
+      <rect x="180" y="950" width="20" height="20" rx="4" fill="#89BAB1" stroke="#222239"/>
+      <text x="208" y="966" fill="#222239" font-size="13">Frontend Next.js</text>
+      <rect x="372" y="950" width="20" height="20" rx="4" fill="#2e2e4a" stroke="#222239"/>
+      <text x="400" y="966" fill="#222239" font-size="13">Backend API .NET</text>
+      <rect x="568" y="950" width="20" height="20" rx="4" fill="#181828" stroke="#FF5315" stroke-width="3"/>
+      <text x="596" y="966" fill="#222239" font-size="13">Worker .NET</text>
+      <rect x="732" y="950" width="20" height="20" rx="4" fill="#222239"/>
+      <text x="760" y="966" fill="#222239" font-size="13">PostgreSQL</text>
+      <rect x="888" y="950" width="20" height="20" rx="4" fill="#181828" stroke="#FF5315" stroke-width="2"/>
+      <text x="916" y="966" fill="#222239" font-size="13">Integração KAAS</text>
+      <rect x="1088" y="950" width="20" height="20" rx="4" fill="#FFFFFF" stroke="#222239"/>
+      <text x="1116" y="966" fill="#222239" font-size="13">Domain</text>
+      <rect x="1228" y="950" width="20" height="20" rx="4" fill="#E8E7E2" stroke="#222239"/>
+      <text x="1256" y="966" fill="#222239" font-size="13">Infrastructure</text>
+
+      <line x1="56" y1="1008" x2="116" y2="1008" stroke="#222239" stroke-width="2" marker-end="url(#m2arr)"/>
+      <text x="128" y="1013" fill="#222239" font-size="13">HTTP / persistência</text>
+      <line x1="340" y1="1008" x2="400" y2="1008" stroke="#222239" stroke-width="2" stroke-dasharray="8 6" marker-end="url(#m2arr)"/>
+      <text x="412" y="1013" fill="#222239" font-size="13">Poll / outbox</text>
+      <line x1="568" y1="1008" x2="628" y2="1008" stroke="#222239" stroke-width="2" stroke-dasharray="2 6" marker-end="url(#m2arr)"/>
+      <text x="640" y="1013" fill="#222239" font-size="13">Auditoria / replay</text>
+      <text x="1872" y="1013" text-anchor="end" fill="#555463" font-size="13">BBF Firmas e Poderes · 28/08/2026</text>
+    </svg></section>
+    <section class="slide" data-i="3"><svg viewBox="0 0 1920 1080" preserveAspectRatio="xMidYMid meet" role="img" aria-labelledby="m3t m3d">
+      <title id="m3t">BBF Firmas e Poderes — Fluxo do documento (upload → decisão → auditoria)</title>
+      <desc id="m3d">Do upload pelo operador à validação, Worker, KAAS, motor de regras, persistência e replay do auditor.</desc>
+      <defs>
+        <marker id="m3arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="#222239"/>
+        </marker>
+        <marker id="m3arro" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="#FF5315"/>
+        </marker>
+        <marker id="m3arrw" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="#FFFFFF"/>
+        </marker>
+      </defs>
+
+      <rect width="1920" height="1080" fill="#F7F6F2"/>
+      <rect width="1920" height="6" fill="#FF5315"/>
+      <text x="48" y="40" fill="#FF5315" font-size="14" font-weight="700" letter-spacing="2.4">JORNADA END-TO-END · OPERADOR → AUDITOR</text>
+      <text x="48" y="76" fill="#222239" font-size="32" font-weight="800">Fluxo do documento</text>
+      <text x="1872" y="76" fill="#555463" font-size="16" text-anchor="end">KAAS estrutura · regras decidem</text>
+
+      <rect x="36" y="100" width="560" height="176" rx="14" fill="#FFFFFF" stroke="#E8E7E2" stroke-width="2"/>
+      <text x="52" y="122" fill="#FF5315" font-size="12" font-weight="700" letter-spacing="1.6">CANAL HUMANO</text>
+
+      <rect x="612" y="100" width="684" height="776" rx="14" fill="#FFFFFF" stroke="#E8E7E2" stroke-width="2"/>
+      <text x="628" y="122" fill="#FF5315" font-size="12" font-weight="700" letter-spacing="1.6">PLATAFORMA BBF</text>
+
+      <rect x="1312" y="100" width="572" height="416" rx="14" fill="#FFFFFF" stroke="#E8E7E2" stroke-width="2"/>
+      <text x="1328" y="122" fill="#FF5315" font-size="12" font-weight="700" letter-spacing="1.6">ANÁLISE EXTERNA</text>
+
+      <rect x="1312" y="532" width="572" height="344" rx="14" fill="#FFFFFF" stroke="#E8E7E2" stroke-width="2"/>
+      <text x="1328" y="554" fill="#FF5315" font-size="12" font-weight="700" letter-spacing="1.6">RESULTADO</text>
+
+      <!-- N1 Operador -->
+      <rect x="52" y="136" width="236" height="120" rx="10" fill="#FFE2A9" stroke="#222239" stroke-width="2"/>
+      <text x="170" y="176" text-anchor="middle" fill="#222239" font-size="14" font-weight="700">1</text>
+      <text x="170" y="206" text-anchor="middle" fill="#222239" font-size="20" font-weight="800">Operador</text>
+      <text x="170" y="232" text-anchor="middle" fill="#222239" font-size="13">Login JWT + upload</text>
+
+      <!-- N2 Interface Web -->
+      <rect x="312" y="136" width="260" height="120" rx="10" fill="#89BAB1" stroke="#222239" stroke-width="2"/>
+      <text x="442" y="176" text-anchor="middle" fill="#222239" font-size="14" font-weight="700">2</text>
+      <text x="442" y="206" text-anchor="middle" fill="#222239" font-size="20" font-weight="800">Interface Web</text>
+      <text x="442" y="232" text-anchor="middle" fill="#222239" font-size="13">Envio, status, decisão</text>
+
+      <!-- N3 API de ingestão -->
+      <rect x="628" y="136" width="316" height="120" rx="10" fill="#2e2e4a" stroke="#222239" stroke-width="2"/>
+      <text x="786" y="176" text-anchor="middle" fill="#FFE2A9" font-size="14" font-weight="700">3</text>
+      <text x="786" y="206" text-anchor="middle" fill="#FFFFFF" font-size="20" font-weight="800">API de ingestão</text>
+      <text x="786" y="232" text-anchor="middle" fill="#FFFFFF" font-size="13">POST /v1/documents → 202</text>
+
+      <!-- N4 Persistência -->
+      <rect x="964" y="136" width="308" height="120" rx="10" fill="#222239" stroke="#181828" stroke-width="2"/>
+      <text x="1118" y="176" text-anchor="middle" fill="#FFE2A9" font-size="14" font-weight="700">4</text>
+      <text x="1118" y="206" text-anchor="middle" fill="#FFFFFF" font-size="20" font-weight="800">Persistência</text>
+      <text x="1118" y="232" text-anchor="middle" fill="#FFFFFF" font-size="13">Postgres + outbox + arquivo</text>
+
+      <!-- N8 Consulta na tela -->
+      <rect x="52" y="300" width="520" height="176" rx="10" fill="#89BAB1" stroke="#222239" stroke-width="2"/>
+      <text x="312" y="348" text-anchor="middle" fill="#222239" font-size="14" font-weight="700">8</text>
+      <text x="312" y="384" text-anchor="middle" fill="#222239" font-size="20" font-weight="800">Consulta na tela</text>
+      <text x="312" y="416" text-anchor="middle" fill="#222239" font-size="14">Poll GET /v1/documents/{id}/status</text>
+      <text x="312" y="440" text-anchor="middle" fill="#222239" font-size="13">e GET …/canonical</text>
+
+      <!-- N5 Worker -->
+      <rect x="628" y="284" width="644" height="208" rx="12" fill="#181828" stroke="#FF5315" stroke-width="4"/>
+      <text x="950" y="324" text-anchor="middle" fill="#FF5315" font-size="12" font-weight="700" letter-spacing="1.8">DESTAQUE · PROCESSAMENTO</text>
+      <text x="950" y="360" text-anchor="middle" fill="#FFFFFF" font-size="14" font-weight="700">5</text>
+      <text x="950" y="400" text-anchor="middle" fill="#FFFFFF" font-size="26" font-weight="800">Worker</text>
+      <text x="950" y="432" text-anchor="middle" fill="#FFFFFF" font-size="15">Poll da outbox document.uploaded</text>
+      <text x="950" y="456" text-anchor="middle" fill="#FFE2A9" font-size="13">único componente que chama o KAAS</text>
+
+      <!-- N6 KAAS -->
+      <rect x="1332" y="284" width="532" height="208" rx="12" fill="#181828" stroke="#FF5315" stroke-width="3"/>
+      <text x="1598" y="336" text-anchor="middle" fill="#FF5315" font-size="14" font-weight="700">6</text>
+      <text x="1598" y="376" text-anchor="middle" fill="#FFFFFF" font-size="24" font-weight="800">KAAS (Foursys)</text>
+      <text x="1598" y="412" text-anchor="middle" fill="#FFFFFF" font-size="15">Análise do documento · estrutura</text>
+      <text x="1598" y="440" text-anchor="middle" fill="#FFE2A9" font-size="13">sócios e poderes · não decide Aprovado/Reprovado</text>
+      <text x="1598" y="464" text-anchor="middle" fill="#89BAB1" font-size="13">jornada testes-firmas-e-poderes · POST sync</text>
+
+      <!-- N9 Checagem de poderes -->
+      <rect x="52" y="504" width="520" height="148" rx="10" fill="#2e2e4a" stroke="#222239" stroke-width="2"/>
+      <text x="312" y="548" text-anchor="middle" fill="#FFE2A9" font-size="14" font-weight="700">9</text>
+      <text x="312" y="580" text-anchor="middle" fill="#FFFFFF" font-size="20" font-weight="800">Checagem de poderes</text>
+      <text x="312" y="608" text-anchor="middle" fill="#FFFFFF" font-size="14">evaluate / authority</text>
+      <text x="312" y="628" text-anchor="middle" fill="#FFE2A9" font-size="13">pedido a partir da Interface Web</text>
+
+      <!-- N10 Motor de decisão -->
+      <rect x="628" y="516" width="644" height="188" rx="12" fill="#181828" stroke="#FF5315" stroke-width="4"/>
+      <text x="950" y="556" text-anchor="middle" fill="#FF5315" font-size="12" font-weight="700" letter-spacing="1.8">DESTAQUE · REGRAS</text>
+      <text x="950" y="590" text-anchor="middle" fill="#FFFFFF" font-size="14" font-weight="700">10</text>
+      <text x="950" y="626" text-anchor="middle" fill="#FFFFFF" font-size="24" font-weight="800">Motor de decisão</text>
+      <text x="950" y="658" text-anchor="middle" fill="#FFFFFF" font-size="14">RN01–RN04 + TH01 sobre o canônico</text>
+      <text x="950" y="680" text-anchor="middle" fill="#FFE2A9" font-size="13">não reconsulta KAAS</text>
+
+      <!-- N7 Canônico -->
+      <rect x="1332" y="572" width="248" height="140" rx="10" fill="#222239" stroke="#181828" stroke-width="2"/>
+      <text x="1456" y="616" text-anchor="middle" fill="#FFE2A9" font-size="14" font-weight="700">7</text>
+      <text x="1456" y="648" text-anchor="middle" fill="#FFFFFF" font-size="18" font-weight="800">Canônico</text>
+      <text x="1456" y="676" text-anchor="middle" fill="#FFFFFF" font-size="12">Pessoas e poderes</text>
+      <text x="1456" y="694" text-anchor="middle" fill="#89BAB1" font-size="12">canonico_pronto</text>
+
+      <!-- N11 Decisão -->
+      <rect x="1604" y="572" width="260" height="140" rx="10" fill="#222239" stroke="#181828" stroke-width="2"/>
+      <text x="1734" y="616" text-anchor="middle" fill="#FFE2A9" font-size="14" font-weight="700">11</text>
+      <text x="1734" y="648" text-anchor="middle" fill="#FFFFFF" font-size="18" font-weight="800">Decisão</text>
+      <text x="1734" y="676" text-anchor="middle" fill="#FFFFFF" font-size="12">APROVADO / REPROVADO</text>
+      <text x="1734" y="694" text-anchor="middle" fill="#FFE2A9" font-size="12">/ MANUAL + snapshot</text>
+
+      <!-- N12 Auditor -->
+      <rect x="52" y="676" width="236" height="176" rx="10" fill="#FFE2A9" stroke="#222239" stroke-width="2"/>
+      <text x="170" y="724" text-anchor="middle" fill="#222239" font-size="14" font-weight="700">12</text>
+      <text x="170" y="760" text-anchor="middle" fill="#222239" font-size="20" font-weight="800">Auditor</text>
+      <text x="170" y="792" text-anchor="middle" fill="#222239" font-size="13">Consulta trilha e replay</text>
+      <text x="170" y="816" text-anchor="middle" fill="#222239" font-size="13">perfil restrito</text>
+
+      <!-- N13 Trilha WORM -->
+      <rect x="312" y="676" width="260" height="176" rx="10" fill="#222239" stroke="#181828" stroke-width="2"/>
+      <text x="442" y="724" text-anchor="middle" fill="#FFE2A9" font-size="14" font-weight="700">13</text>
+      <text x="442" y="760" text-anchor="middle" fill="#FFFFFF" font-size="18" font-weight="800">Trilha WORM</text>
+      <text x="442" y="792" text-anchor="middle" fill="#FFFFFF" font-size="13">GET /v1/audit/trail</text>
+      <text x="442" y="816" text-anchor="middle" fill="#89BAB1" font-size="13">eventos imutáveis</text>
+
+      <!-- N14 Replay -->
+      <rect x="628" y="728" width="316" height="124" rx="10" fill="#2e2e4a" stroke="#222239" stroke-width="2"/>
+      <text x="786" y="768" text-anchor="middle" fill="#FFE2A9" font-size="14" font-weight="700">14</text>
+      <text x="786" y="800" text-anchor="middle" fill="#FFFFFF" font-size="20" font-weight="800">Replay</text>
+      <text x="786" y="828" text-anchor="middle" fill="#FFFFFF" font-size="13">POST /v1/decision/{id}/replay</text>
+
+      <!-- C1 Operador → Interface -->
+      <path d="M 288 196 H 312" fill="none" stroke="#222239" stroke-width="2.2" marker-end="url(#m3arr)"/>
+      <rect x="276" y="170" width="36" height="18" rx="3" fill="#F7F6F2"/>
+      <text x="294" y="183" text-anchor="middle" fill="#222239" font-size="11" font-weight="700">1</text>
+
+      <!-- C2 Interface → API -->
+      <path d="M 572 196 H 628" fill="none" stroke="#222239" stroke-width="2.2" marker-end="url(#m3arrw)"/>
+      <rect x="580" y="170" width="36" height="18" rx="3" fill="#F7F6F2"/>
+      <text x="598" y="183" text-anchor="middle" fill="#222239" font-size="11" font-weight="700">2</text>
+
+      <!-- C3 API → Persistência -->
+      <path d="M 944 196 H 964" fill="none" stroke="#222239" stroke-width="2.2" marker-end="url(#m3arrw)"/>
+      <rect x="944" y="170" width="20" height="18" rx="3" fill="#F7F6F2"/>
+      <text x="954" y="183" text-anchor="middle" fill="#222239" font-size="11" font-weight="700">3</text>
+
+      <!-- C4 Worker → Persistência (poll) -->
+      <path d="M 1118 284 V 256" fill="none" stroke="#222239" stroke-width="2.2" stroke-dasharray="8 6" marker-end="url(#m3arrw)"/>
+      <rect x="1124" y="260" width="120" height="18" rx="3" fill="#F7F6F2"/>
+      <text x="1184" y="273" text-anchor="middle" fill="#222239" font-size="11" font-weight="700">4 Consome outbox</text>
+
+      <!-- C5 Worker → KAAS -->
+      <path d="M 1272 360 H 1332" fill="none" stroke="#FF5315" stroke-width="2.6" marker-end="url(#m3arro)"/>
+      <rect x="1276" y="334" width="52" height="18" rx="3" fill="#F7F6F2"/>
+      <text x="1302" y="347" text-anchor="middle" fill="#222239" font-size="11" font-weight="700">5 POST</text>
+
+      <!-- C6 KAAS → Worker -->
+      <path d="M 1332 430 H 1272" fill="none" stroke="#FF5315" stroke-width="2.6" marker-end="url(#m3arro)"/>
+      <rect x="1274" y="434" width="56" height="18" rx="3" fill="#F7F6F2"/>
+      <text x="1302" y="447" text-anchor="middle" fill="#222239" font-size="11" font-weight="700">6 Resultado</text>
+
+      <!-- C7 Worker → Canônico -->
+      <path d="M 1272 470 H 1300 V 642 H 1332" fill="none" stroke="#222239" stroke-width="2.2" marker-end="url(#m3arrw)"/>
+      <rect x="1288" y="612" width="40" height="18" rx="3" fill="#F7F6F2"/>
+      <text x="1308" y="625" text-anchor="middle" fill="#222239" font-size="11" font-weight="700">7</text>
+
+      <!-- C8 Interface → Consulta -->
+      <path d="M 442 256 V 300" fill="none" stroke="#222239" stroke-width="2.2" marker-end="url(#m3arr)"/>
+      <rect x="448" y="268" width="24" height="18" rx="3" fill="#F7F6F2"/>
+      <text x="460" y="281" text-anchor="middle" fill="#222239" font-size="11" font-weight="700">8</text>
+
+      <!-- C9 Consulta → Canônico -->
+      <path d="M 312 476 V 504 H 1456 V 572" fill="none" stroke="#222239" stroke-width="2.2" marker-end="url(#m3arrw)"/>
+      <rect x="820" y="486" width="88" height="18" rx="3" fill="#F7F6F2"/>
+      <text x="864" y="499" text-anchor="middle" fill="#222239" font-size="11" font-weight="700">8b canonical</text>
+
+      <!-- C10 Interface → Checagem (coluna esquerda) -->
+      <path d="M 312 196 H 40 V 578 H 52" fill="none" stroke="#222239" stroke-width="2.2" marker-end="url(#m3arrw)"/>
+      <rect x="44" y="430" width="72" height="18" rx="3" fill="#F7F6F2"/>
+      <text x="80" y="443" text-anchor="middle" fill="#222239" font-size="11" font-weight="700">9 Checagem</text>
+
+      <!-- C11 Checagem → Motor -->
+      <path d="M 572 578 H 628" fill="none" stroke="#222239" stroke-width="2.2" marker-end="url(#m3arrw)"/>
+      <rect x="572" y="552" width="56" height="18" rx="3" fill="#F7F6F2"/>
+      <text x="600" y="565" text-anchor="middle" fill="#222239" font-size="11" font-weight="700">10 Regras</text>
+
+      <!-- C12 Motor → Decisão -->
+      <path d="M 950 704 V 716 H 1734 V 712" fill="none" stroke="#222239" stroke-width="2.2" marker-end="url(#m3arrw)"/>
+      <rect x="1288" y="718" width="28" height="18" rx="3" fill="#F7F6F2"/>
+      <text x="1302" y="731" text-anchor="middle" fill="#222239" font-size="11" font-weight="700">11</text>
+
+      <!-- C13 Auditor → Trilha -->
+      <path d="M 288 764 H 312" fill="none" stroke="#222239" stroke-width="2.2" stroke-dasharray="2 6" marker-end="url(#m3arrw)"/>
+      <rect x="276" y="738" width="36" height="18" rx="3" fill="#F7F6F2"/>
+      <text x="294" y="751" text-anchor="middle" fill="#222239" font-size="11" font-weight="700">12</text>
+
+      <!-- C14 Auditor → Replay -->
+      <path d="M 170 852 V 868 H 786 V 852" fill="none" stroke="#222239" stroke-width="2.2" stroke-dasharray="2 6" marker-end="url(#m3arrw)"/>
+      <rect x="400" y="870" width="120" height="18" rx="3" fill="#F7F6F2"/>
+      <text x="460" y="883" text-anchor="middle" fill="#222239" font-size="11" font-weight="700">13 Replay snapshot</text>
+
+      <!-- Legenda (mesmo padrão dos diagramas 1 e 2) -->
+      <rect x="36" y="900" width="1848" height="144" rx="12" fill="#FFFFFF" stroke="#E8E7E2" stroke-width="2"/>
+      <text x="56" y="928" fill="#FF5315" font-size="12" font-weight="700" letter-spacing="1.8">LEGENDA</text>
+      <rect x="56" y="946" width="20" height="20" rx="4" fill="#FFE2A9" stroke="#222239"/>
+      <text x="84" y="962" fill="#222239" font-size="14">Atores</text>
+      <rect x="180" y="946" width="20" height="20" rx="4" fill="#89BAB1" stroke="#222239"/>
+      <text x="208" y="962" fill="#222239" font-size="14">Frontend Next.js</text>
+      <rect x="380" y="946" width="20" height="20" rx="4" fill="#2e2e4a" stroke="#222239"/>
+      <text x="408" y="962" fill="#222239" font-size="14">Backend API .NET</text>
+      <rect x="592" y="946" width="20" height="20" rx="4" fill="#181828" stroke="#FF5315" stroke-width="3"/>
+      <text x="620" y="962" fill="#222239" font-size="14">Worker .NET / motor</text>
+      <rect x="820" y="946" width="20" height="20" rx="4" fill="#222239"/>
+      <text x="848" y="962" fill="#222239" font-size="14">PostgreSQL / dados</text>
+      <rect x="1040" y="946" width="20" height="20" rx="4" fill="#181828" stroke="#FF5315" stroke-width="2"/>
+      <text x="1068" y="962" fill="#222239" font-size="14">Integração KAAS</text>
+
+      <line x1="56" y1="1004" x2="120" y2="1004" stroke="#222239" stroke-width="2" marker-end="url(#m3arr)"/>
+      <text x="132" y="1009" fill="#222239" font-size="14">HTTP / persistência</text>
+      <line x1="360" y1="1004" x2="424" y2="1004" stroke="#222239" stroke-width="2" stroke-dasharray="8 6" marker-end="url(#m3arr)"/>
+      <text x="436" y="1009" fill="#222239" font-size="14">Poll / outbox</text>
+      <line x1="600" y1="1004" x2="664" y2="1004" stroke="#222239" stroke-width="2" stroke-dasharray="2 6" marker-end="url(#m3arr)"/>
+      <text x="676" y="1009" fill="#222239" font-size="14">Auditoria / replay</text>
+      <text x="1872" y="1009" text-anchor="end" fill="#555463" font-size="13">BBF Firmas e Poderes · 28/08/2026</text>
+    </svg></section>
+
+    <section class="slide" data-i="4">
+      <div class="keys">
+        <div class="brand-bar"></div>
+        <div class="kicker">SÍNTESE PARA LIDERANÇA</div>
+        <h2>O que esta arquitetura garante</h2>
+        <div class="grid">
+          <article class="card">
+            <h3>1. KAAS estrutura. Regras decidem.</h3>
+            <p>O Worker envia o documento ao KAAS (Foursys). O KAAS devolve sócios e poderes. A decisão APROVADO / REPROVADO / MANUAL sai do motor de regras na API (RN01–RN04 + TH01), não do workflow externo.</p>
+          </article>
+          <article class="card mint">
+            <h3>2. Quatro containers. Uma rede.</h3>
+            <p>web (Next.js), api (.NET 8), worker (.NET 8) e db (PostgreSQL 16) na rede Docker bbf-internal. A API não chama o KAAS. O Worker consome a outbox (tabela no Postgres, não broker).</p>
+          </article>
+          <article class="card navy">
+            <h3>3. Dois perfis na apresentação.</h3>
+            <p>Operador: upload, consulta e checagem de poderes. Auditor: trilha WORM (append-only) e replay do snapshot persistido — sem reprocessar KAAS.</p>
+          </article>
+          <article class="card">
+            <h3>4. Integração externa única.</h3>
+            <p>KAAS (Foursys), jornada testes-firmas-e-poderes, chave X-Flow-Api-Key só no Worker. Junta Comercial permanece stub. Sem Kubernetes no desenho.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <nav>
+    <button class="ghost" type="button" id="prev">← Anterior</button>
+    <div class="dots" id="dots"></div>
+    <span class="hint">← →  ·  F11 tela cheia  ·  1–5 atalho</span>
+    <button type="button" id="next">Próximo →</button>
+  </nav>
+
+  <script>
+    const slides = Array.from(document.querySelectorAll(".slide"));
+    const dots = document.getElementById("dots");
+    let i = 0;
+    slides.forEach((_, n) => {
+      const el = document.createElement("i");
+      if (n === 0) el.className = "on";
+      dots.appendChild(el);
+    });
+    function go(n) {
+      i = (n + slides.length) % slides.length;
+      slides.forEach((s, k) => s.classList.toggle("on", k === i));
+      Array.from(dots.children).forEach((d, k) => d.classList.toggle("on", k === i));
+    }
+    document.getElementById("prev").onclick = () => go(i - 1);
+    document.getElementById("next").onclick = () => go(i + 1);
+    document.addEventListener("keydown", (e) => {
+      if (["ArrowRight", "PageDown", " ", "Enter"].includes(e.key)) { e.preventDefault(); go(i + 1); }
+      if (["ArrowLeft", "PageUp", "Backspace"].includes(e.key)) { e.preventDefault(); go(i - 1); }
+      if (e.key === "Home") go(0);
+      if (e.key === "End") go(slides.length - 1);
+      if (e.key >= "1" && e.key <= "5") go(Number(e.key) - 1);
+    });
+    dots.addEventListener("click", (e) => {
+      const n = Array.from(dots.children).indexOf(e.target);
+      if (n >= 0) go(n);
+    });
+  </script>
+</body>
+</html>

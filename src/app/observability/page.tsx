@@ -1,4 +1,14 @@
+"use client";
+
+import { useCallback, useEffect, useState } from "react";
+import { JwtTokenForm } from "@/components/JwtTokenForm";
+import { MockDataBanner } from "@/components/MockDataBanner";
+import { SourceHealthPanel } from "@/components/SourceHealthPanel";
+import type { SourceHealth } from "@/domain";
+import { ApiError } from "@/lib/api";
+import { AUTH_UNAUTHORIZED_EVENT } from "@/lib/auth";
 import { dashboardsByStage, slo, decisionsLast24h, errorsLast24h, latencyP95Last24h, costPerDecisionBreakdown, costByConsumer } from "@/lib/mocks";
+import { getVerificationHealth } from "@/lib/verification";
 
 const fmtBRL = (n: number) => n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 const fmtPct = (n: number) => `${(n * 100).toFixed(2)}%`;
@@ -8,6 +18,35 @@ const tendenciaIcon = { estavel: "→", alta: "↑", queda: "↓" } as const;
 const tendenciaColor = { estavel: "var(--color-text-secondary)", alta: "var(--color-status-rejected)", queda: "var(--color-status-approved)" } as const;
 
 export default function ObservabilityPage() {
+  const [sources, setSources] = useState<SourceHealth[]>([]);
+  const [healthError, setHealthError] = useState<string | null>(null);
+  const [unauthorized, setUnauthorized] = useState(false);
+
+  const refreshHealth = useCallback(async () => {
+    setHealthError(null);
+    try {
+      const items = await getVerificationHealth();
+      setSources(items);
+      setUnauthorized(false);
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 401) {
+        setUnauthorized(true);
+        setSources([]);
+      }
+      setHealthError(err instanceof Error ? err.message : "Falha ao consultar fontes.");
+    }
+  }, []);
+
+  useEffect(() => {
+    void refreshHealth();
+  }, [refreshHealth]);
+
+  useEffect(() => {
+    const onUnauthorized = () => setUnauthorized(true);
+    window.addEventListener(AUTH_UNAUTHORIZED_EVENT, onUnauthorized);
+    return () => window.removeEventListener(AUTH_UNAUTHORIZED_EVENT, onUnauthorized);
+  }, []);
+
   const totalDecisoesMes = costByConsumer.reduce((s, c) => s + c.decisoesMes, 0);
   const totalCostMes = costByConsumer.reduce((s, c) => s + c.custoTotalMesBRL, 0);
   const custoMedioReal = totalCostMes / totalDecisoesMes;
@@ -28,6 +67,34 @@ export default function ObservabilityPage() {
           <button className="btn btn--secondary">Exportar relatório FinOps</button>
         </div>
       </div>
+
+      {unauthorized && (
+        <JwtTokenForm
+          roleLabel="operador"
+          hint="GET /v1/verification/health exige Bearer operador/admin."
+          onSaved={() => void refreshHealth()}
+        />
+      )}
+
+      {healthError && !unauthorized && (
+        <div className="banner banner--err" role="alert">✕ {healthError}</div>
+      )}
+
+      <div className="card" style={{ marginBottom: 16 }}>
+        <h3>Fontes oficiais (API)</h3>
+        <p style={{ margin: "0 0 12px", fontSize: 13, color: "var(--color-text-secondary)" }}>
+          GET <code>/v1/verification/health</code> — único bloco persistido nesta tela.
+        </p>
+        {sources.length > 0 ? (
+          <SourceHealthPanel sources={sources} />
+        ) : (
+          <p style={{ margin: 0, color: "var(--color-text-muted)", fontSize: 14 }}>
+            {unauthorized ? "Informe um JWT para ver as fontes." : "Sem dados de health."}
+          </p>
+        )}
+      </div>
+
+      <MockDataBanner detail="SLO, séries 24h e FinOps sem endpoint. Seed visual." />
 
       {/* SLO consolidado */}
       <div className="grid-3">

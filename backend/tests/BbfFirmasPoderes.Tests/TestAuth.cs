@@ -14,6 +14,11 @@ internal static class TestAuth
     public const string Audience = "bbf-firmas-poderes-test";
     public const string SigningKey = "test-only-signing-key-32-bytes!!";
 
+    public const string DemoOperadorEmail = "ana.silva@bbf.com.br";
+    public const string DemoOperadorPassword = "operador-test-pass";
+    public const string DemoAuditorEmail = "auditor.interno@bbf.com.br";
+    public const string DemoAuditorPassword = "auditor-test-pass";
+
     public static string CreateToken(string role, string? sub = null)
     {
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(SigningKey));

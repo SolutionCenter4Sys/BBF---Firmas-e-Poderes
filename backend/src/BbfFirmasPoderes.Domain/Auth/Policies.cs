@@ -9,4 +9,9 @@ public static class Policies
     public const string Consumer = "role:consumer";
     public const string DocumentsUpload = "documents:upload";
     public const string DocumentsRead = "documents:read";
+    public const string DecisionRead = "decision:read";
+    public const string DecisionReplay = "decision:replay";
+    public const string ApiDecisionRead = "api:decision:read";
+    public const string VerificationHealth = "verification:health";
+    public const string AuditRead = "audit:read";
 }

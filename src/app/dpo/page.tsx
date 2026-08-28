@@ -1,5 +1,6 @@
 "use client";
 import { useMemo, useState } from "react";
+import { MockDataBanner } from "@/components/MockDataBanner";
 import { dpoRequests, type DpoRequestStatus, type DpoRequestType } from "@/lib/mocks";
 
 const fmtDate = (iso: string) => new Date(iso).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
@@ -39,6 +40,8 @@ export default function DpoPage() {
         </div>
         <button className="btn btn--primary">+ Nova requisição</button>
       </div>
+
+      <MockDataBanner detail="GET de requisições LGPD não existe. Seed visual." />
 
       <div className="grid-3">
         <div className="metric-card" style={{ borderLeftColor: "var(--color-status-info)" }}>

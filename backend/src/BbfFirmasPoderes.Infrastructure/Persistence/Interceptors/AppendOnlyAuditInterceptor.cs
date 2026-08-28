@@ -41,6 +41,11 @@ public sealed class AppendOnlyAuditInterceptor(IAuditContext auditContext) : Sav
                 throw new InvalidOperationException("audit_events é append-only. Update/delete recusado.");
         }
 
+        var alreadyTyped = context.ChangeTracker.Entries<AuditEvent>()
+            .Any(e => e.State == EntityState.Added);
+        if (alreadyTyped)
+            return;
+
         var commands = context.ChangeTracker.Entries()
             .Where(e => e.Entity is not AuditEvent
                         && e.State is EntityState.Added or EntityState.Modified or EntityState.Deleted)
@@ -62,7 +67,7 @@ public sealed class AppendOnlyAuditInterceptor(IAuditContext auditContext) : Sav
                 : auditContext.CorrelationId,
             DocumentId = documentId,
             DecisionId = decisionId,
-            Type = "command.persisted",
+            Type = AuditEventTypes.CommandPersisted,
             Actor = string.IsNullOrWhiteSpace(auditContext.Actor) ? "system" : auditContext.Actor,
             OccurredAt = DateTimeOffset.UtcNow,
             Details = PiiMask.InText(summary)

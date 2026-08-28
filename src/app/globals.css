@@ -43,7 +43,8 @@ a:hover { text-decoration: underline; }
 
 /* Layout */
 .app { display: grid; grid-template-columns: 240px 1fr; min-height: 100vh; }
-.sidebar { background: white; border-right: 1px solid var(--color-border-default); padding: var(--space-5); }
+.sidebar { background: white; border-right: 1px solid var(--color-border-default); padding: var(--space-5); display: flex; flex-direction: column; }
+.sidebar-logout { margin-top: auto; width: 100%; justify-content: center; }
 .sidebar h1 { font-size: 16px; color: var(--color-brand-primary); margin: 0 0 var(--space-5) 0; }
 .sidebar nav { display: flex; flex-direction: column; gap: var(--space-2); }
 .sidebar nav a { padding: 8px 12px; border-radius: var(--radius-md); color: var(--color-text-primary); font-size: 14px; }
@@ -126,3 +127,35 @@ pre { background: #1a1a1a; color: #f0f0f0; padding: 16px; border-radius: var(--r
 .metric-card { background: white; border-radius: var(--radius-md); padding: var(--space-4); border-left: 4px solid var(--color-brand-secondary); }
 .metric-card .metric-value { font-size: 28px; font-weight: 600; margin: 4px 0; }
 .metric-card .metric-label { font-size: 12px; color: var(--color-text-secondary); text-transform: uppercase; letter-spacing: 0.5px; }
+
+.login-boot { min-height: 100vh; display: grid; place-items: center; color: var(--color-text-secondary); }
+.login-screen {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: minmax(280px, 1fr) minmax(360px, 480px);
+  background: linear-gradient(160deg, #8A0820 0%, #CC092F 55%, #1A1A1A 100%);
+}
+.login-brand { color: white; padding: 72px 56px; display: flex; flex-direction: column; justify-content: center; }
+.login-eyebrow { letter-spacing: 0.14em; text-transform: uppercase; font-size: 12px; font-weight: 700; margin: 0 0 12px; opacity: 0.85; }
+.login-brand h1 { font-size: 40px; margin: 0 0 16px; line-height: 1.15; }
+.login-brand p { margin: 0; max-width: 420px; font-size: 16px; opacity: 0.92; }
+.login-card {
+  margin: 24px;
+  background: white;
+  border-radius: var(--radius-lg);
+  padding: 40px 36px;
+  box-shadow: var(--shadow-md);
+  align-self: center;
+  display: grid;
+  gap: 10px;
+}
+.login-card h2 { margin: 0 0 8px; font-size: 24px; }
+.login-label { font-size: 13px; font-weight: 600; color: var(--color-text-secondary); margin-top: 8px; }
+.login-card .btn { width: 100%; justify-content: center; margin-top: 12px; }
+.login-error { margin: 0; color: var(--color-status-rejected); font-size: 13px; }
+.login-hint { margin: 8px 0 0; font-size: 12px; color: var(--color-text-muted); line-height: 1.5; }
+@media (max-width: 840px) {
+  .login-screen { grid-template-columns: 1fr; }
+  .login-brand { padding: 40px 28px 8px; }
+  .login-card { margin: 16px; }
+}

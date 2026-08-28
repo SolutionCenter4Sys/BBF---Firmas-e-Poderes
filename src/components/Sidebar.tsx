@@ -1,6 +1,7 @@
 "use client";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { clearAccessToken } from "@/lib/auth";
 
 interface NavItem {
   href: string;
@@ -62,12 +63,24 @@ const groups: NavGroup[] = [
 
 export default function Sidebar() {
   const pathname = usePathname();
+  const router = useRouter();
+  const showEnvBadge =
+    process.env.NEXT_PUBLIC_APP_ENV === "development"
+    || process.env.NEXT_PUBLIC_APP_ENV === "staging";
+
+  const logout = () => {
+    clearAccessToken();
+    router.replace("/login");
+  };
+
   return (
     <aside className="sidebar" aria-label="Navegação principal">
       <h1>🛡️ BBF Firmas &amp; Poderes</h1>
-      <p style={{ fontSize: 12, color: "var(--color-text-muted)", margin: "0 0 24px 0" }}>
-        MVP mock · v0.1
-      </p>
+      {showEnvBadge && (
+        <p style={{ fontSize: 12, color: "var(--color-text-muted)", margin: "0 0 24px 0" }}>
+          MVP mock · v0.1
+        </p>
+      )}
       <nav>
         {groups.map((g) => (
           <div key={g.title} style={{ marginBottom: 16 }}>
@@ -93,6 +106,9 @@ export default function Sidebar() {
           </div>
         ))}
       </nav>
+      <button type="button" className="btn btn--ghost sidebar-logout" onClick={logout}>
+        Sair
+      </button>
     </aside>
   );
 }

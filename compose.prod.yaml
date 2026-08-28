@@ -1,0 +1,85 @@
+# BBF Firmas e Poderes — contrato de runtime produção (WF-22).
+# NÃO é terraform. NÃO aplicar na AWS a partir daqui.
+# Secrets só via .env.prod gitignorado ou o orquestrador (ECS Secrets Manager).
+name: bbf-firmas-prod
+
+services:
+  db:
+    image: postgres:16
+    env_file: .env.prod
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - bbf_pgdata_prod:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    networks: [bbf]
+    restart: unless-stopped
+
+  api:
+    image: ${BBF_API_IMAGE:-bbf-firmas-api:prod}
+    env_file: .env.prod
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_HTTP_PORTS: "8080"
+      ConnectionStrings__Postgres: ${ConnectionStrings__Postgres}
+      Documents__StorageRoot: /data/docs
+      Database__MigrateOnStartup: "false"
+    volumes:
+      - bbf_docs_prod:/data/docs
+    ports:
+      - "8080:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+    networks: [bbf]
+    restart: unless-stopped
+
+  worker:
+    image: ${BBF_WORKER_IMAGE:-bbf-firmas-worker:prod}
+    env_file: .env.prod
+    environment:
+      DOTNET_ENVIRONMENT: Production
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_HTTP_PORTS: "8081"
+      ConnectionStrings__Postgres: ${ConnectionStrings__Postgres}
+      Documents__StorageRoot: /data/docs
+      Kas__ApiKey: ${Kas__ApiKey}
+      Kas__RunUrl: ${Kas__RunUrl}
+    volumes:
+      - bbf_docs_prod:/data/docs
+    depends_on:
+      db:
+        condition: service_healthy
+      api:
+        condition: service_healthy
+    networks: [bbf]
+    restart: unless-stopped
+
+  web:
+    image: ${BBF_WEB_IMAGE:-bbf-firmas-web:prod}
+    environment:
+      NODE_ENV: production
+      HOSTNAME: 0.0.0.0
+      PORT: "3000"
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+    ports:
+      - "3000:3000"
+    depends_on:
+      api:
+        condition: service_healthy
+    networks: [bbf]
+    restart: unless-stopped
+
+networks:
+  bbf:
+    driver: bridge
+
+volumes:
+  bbf_pgdata_prod:
+  bbf_docs_prod:

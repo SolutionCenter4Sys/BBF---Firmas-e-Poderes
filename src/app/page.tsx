@@ -1,20 +1,41 @@
 "use client";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import {
-  addSessionDocument,
-  documents,
-  getSessionDocuments,
-  metrics,
-  type Document
-} from "@/lib/mocks";
-import { saveKasResult } from "@/lib/kas-result";
-import { newCorrelationId } from "@/lib/kas-ids";
 import { DocStatusBadge } from "@/components/StatusBadge";
+import { uploadDocument, useDocuments } from "@/hooks/useDocuments";
+import { ApiError } from "@/lib/api";
+import { metrics } from "@/lib/mocks";
 
 const MAX_UPLOAD_BYTES = 50 * 1024 * 1024;
 const ACCEPT_ATTR = "application/pdf,image/png,image/jpeg,image/webp,image/tiff";
+const SLO_P95_MS = 2000;
+const SLO_UPTIME = 0.99;
+const SLO_MANUAL_MAX = 0.15;
+
+function sloBorder(kind: "ok" | "warn" | "fail"): string {
+  if (kind === "ok") return "var(--color-status-approved)";
+  if (kind === "warn") return "var(--color-status-manual)";
+  return "var(--color-status-rejected)";
+}
+
+function p95Slo(ms: number): "ok" | "warn" | "fail" {
+  if (ms < SLO_P95_MS) return "ok";
+  if (ms < SLO_P95_MS * 1.25) return "warn";
+  return "fail";
+}
+
+function uptimeSlo(rate: number): "ok" | "warn" | "fail" {
+  if (rate >= SLO_UPTIME) return "ok";
+  if (rate >= SLO_UPTIME - 0.02) return "warn";
+  return "fail";
+}
+
+function decisionsSlo(count: number, manualRate: number): "ok" | "warn" | "fail" {
+  if (count <= 0) return "fail";
+  if (manualRate <= SLO_MANUAL_MAX) return "ok";
+  if (manualRate <= 0.25) return "warn";
+  return "fail";
+}
 
 function isAllowedFile(file: File): boolean {
   if (file.type === "application/pdf" || file.type.startsWith("image/")) return true;
@@ -24,6 +45,10 @@ function isAllowedFile(file: File): boolean {
 const fmtDate = (iso: string) => new Date(iso).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
 const fmtPct = (n: number) => `${(n * 100).toFixed(1)}%`;
 const fmtBRL = (n: number) => n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+const dash = (value?: string) => {
+  const v = value?.trim();
+  return v ? v : "—";
+};
 
 function elapsed(iso: string): string {
   const ms = Date.now() - new Date(iso).getTime();
@@ -37,27 +62,24 @@ function elapsed(iso: string): string {
 }
 
 export default function DashboardPage() {
-  const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState("");
-  const [uploaded, setUploaded] = useState<Document[]>([]);
   const [dragging, setDragging] = useState(false);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
-
-  useEffect(() => {
-    setUploaded(getSessionDocuments());
-  }, []);
-
-  const catalog = useMemo(() => [...uploaded, ...documents], [uploaded]);
+  const { items, loading, error, unauthorized, refresh } = useDocuments();
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return catalog;
-    return catalog.filter(
-      (d) => d.cnpj.toLowerCase().includes(q) || d.razaoSocial.toLowerCase().includes(q) || d.fileName.toLowerCase().includes(q)
+    if (!q) return items;
+    return items.filter(
+      (d) =>
+        dash(d.cnpj).toLowerCase().includes(q)
+        || dash(d.razaoSocial).toLowerCase().includes(q)
+        || d.fileName.toLowerCase().includes(q)
+        || d.documentId.toLowerCase().includes(q)
     );
-  }, [query, catalog]);
+  }, [query, items]);
 
   const openPicker = () => fileInputRef.current?.click();
 
@@ -75,50 +97,21 @@ export default function DashboardPage() {
     }
 
     setBusy(true);
-    setNotice({ kind: "ok", text: `Enviando ${file.name} para a jornada KAAS (sync)… isso pode demorar.` });
+    setNotice({ kind: "ok", text: `Enviando ${file.name} para POST /v1/documents…` });
 
     try {
-      const form = new FormData();
-      const correlationId = newCorrelationId();
-      form.append("file", file);
-      form.append("correlationId", correlationId);
-      const res = await fetch("/api/kas/run", { method: "POST", body: form });
-      const payload: unknown = await res.json().catch(() => ({ error: "Resposta inválida do proxy." }));
-      const meta = payload && typeof payload === "object"
-        ? (payload as { correlationId?: string; executionId?: string | null })
-        : {};
-
-      saveKasResult({
-        at: new Date().toISOString(),
-        fileName: file.name,
-        httpStatus: res.status,
-        ok: res.ok,
-        body: payload,
-        correlationId: meta.correlationId || correlationId,
-        executionId: meta.executionId ?? null,
-        action: "ingest"
+      const accepted = await uploadDocument(file);
+      setNotice({
+        kind: "ok",
+        text: `${file.name} aceito (${accepted.documentId}, ${accepted.status}). Persistido no Postgres.`
       });
-
-      const doc: Document = {
-        documentId: `doc_${Date.now()}`,
-        fileName: file.name,
-        cnpj: "—",
-        razaoSocial: "Identificação pendente (OCR)",
-        tipoSocietario: "LTDA",
-        uploadedAt: new Date().toISOString(),
-        uploadedBy: "voce@bbf.com.br",
-        status: res.ok ? "processando_ocr" : "falha",
-        hash: "—",
-        paginas: 0,
-        confianca: { ocr: 0, iagen: 0, ner: 0 },
-        socios: [],
-        poderes: []
-      };
-      addSessionDocument(doc);
-      setUploaded((prev) => [doc, ...prev]);
-      router.push("/kas-result");
+      await refresh();
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Falha ao enviar o arquivo.";
+      const message = err instanceof ApiError
+        ? err.message
+        : err instanceof Error
+          ? err.message
+          : "Falha ao enviar o arquivo.";
       setNotice({ kind: "err", text: message });
     } finally {
       setBusy(false);
@@ -140,7 +133,7 @@ export default function DashboardPage() {
           <h2>Dashboard</h2>
           <div className="subtitle">Visão geral do pipeline e dos documentos em processamento</div>
         </div>
-        <button type="button" className="btn btn--primary" onClick={openPicker} disabled={busy}>
+        <button type="button" className="btn btn--primary" onClick={openPicker} disabled={busy || unauthorized}>
           {busy ? "Enviando…" : "+ Novo upload"}
         </button>
       </div>
@@ -149,24 +142,29 @@ export default function DashboardPage() {
           {notice.kind === "ok" ? "✓" : "✕"} {notice.text}
         </div>
       )}
+      {error && !notice && !unauthorized && (
+        <div className="banner banner--err" role="alert">
+          ✕ {error}
+        </div>
+      )}
 
       <div className="grid-3">
-        <div className="metric-card">
+        <div className="metric-card" style={{ borderLeftColor: sloBorder(decisionsSlo(metrics.decisionsToday, metrics.manualRate)) }}>
           <div className="metric-label">Decisões hoje</div>
           <div className="metric-value">{metrics.decisionsToday}</div>
           <div style={{ fontSize: 12, color: "var(--color-text-secondary)" }}>
             {fmtPct(metrics.approvedRate)} aprovadas · {fmtPct(metrics.rejectedRate)} reprovadas · {fmtPct(metrics.manualRate)} manual
           </div>
         </div>
-        <div className="metric-card" style={{ borderLeftColor: "var(--color-status-approved)" }}>
+        <div className="metric-card" style={{ borderLeftColor: sloBorder(p95Slo(metrics.p95LatencyMs)) }}>
           <div className="metric-label">p95 latência</div>
           <div className="metric-value">{metrics.p95LatencyMs}ms</div>
-          <div style={{ fontSize: 12, color: "var(--color-text-secondary)" }}>SLO: &lt; 2.000 ms ✓</div>
+          <div style={{ fontSize: 12, color: "var(--color-text-secondary)" }}>SLO: &lt; 2.000 ms {metrics.p95LatencyMs < SLO_P95_MS ? "✓" : "⚠"}</div>
         </div>
-        <div className="metric-card" style={{ borderLeftColor: "var(--color-status-info)" }}>
+        <div className="metric-card" style={{ borderLeftColor: sloBorder(uptimeSlo(metrics.uptime30d)) }}>
           <div className="metric-label">Disponibilidade 30d</div>
           <div className="metric-value">{fmtPct(metrics.uptime30d)}</div>
-          <div style={{ fontSize: 12, color: "var(--color-text-secondary)" }}>SLO: ≥ 99% ✓ · Custo médio {fmtBRL(metrics.costPerDecisionBRL)}/decisão</div>
+          <div style={{ fontSize: 12, color: "var(--color-text-secondary)" }}>SLO: ≥ 99% {metrics.uptime30d >= SLO_UPTIME ? "✓" : "⚠"} · Custo médio {fmtBRL(metrics.costPerDecisionBRL)}/decisão</div>
         </div>
       </div>
 
@@ -177,37 +175,37 @@ export default function DashboardPage() {
           role="button"
           tabIndex={0}
           aria-label="Enviar documento: clique ou arraste um arquivo"
-          aria-disabled={busy}
+          aria-disabled={busy || unauthorized}
           onClick={() => {
-            if (!busy) openPicker();
+            if (!busy && !unauthorized) openPicker();
           }}
           onKeyDown={(e) => {
             if (e.key === "Enter" || e.key === " ") {
               e.preventDefault();
-              openPicker();
+              if (!busy && !unauthorized) openPicker();
             }
           }}
           onDragOver={(e) => {
             e.preventDefault();
-            setDragging(true);
+            if (!unauthorized) setDragging(true);
           }}
           onDragLeave={() => setDragging(false)}
           onDrop={(e) => {
             e.preventDefault();
             setDragging(false);
-            ingestFiles(e.dataTransfer.files);
+            if (!unauthorized) ingestFiles(e.dataTransfer.files);
           }}
         >
           📄 Arraste e solte um <strong>contrato social</strong>, <strong>procuração</strong> ou <strong>alteração contratual</strong>
           <div style={{ fontSize: 12, color: "var(--color-text-secondary)", marginTop: 8 }}>
-            PDF ou imagem · até 50 MB · validação antivírus + extração via IA Gen
+            PDF ou imagem · até 50 MB · seu documento fica protegido durante toda a análise
           </div>
         </div>
       </div>
 
       <div className="card">
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 12 }}>
-          <h3 style={{ margin: 0 }}>Documentos recentes ({filtered.length})</h3>
+          <h3 style={{ margin: 0 }}>Documentos recentes ({loading ? "…" : filtered.length})</h3>
           <input
             className="input"
             style={{ maxWidth: 360 }}
@@ -232,20 +230,39 @@ export default function DashboardPage() {
             </tr>
           </thead>
           <tbody>
-            {filtered.map((d) => (
+            {loading && (
+              <tr>
+                <td colSpan={8} style={{ textAlign: "center", padding: 24, color: "var(--color-text-secondary)" }}>
+                  Carregando GET /v1/documents…
+                </td>
+              </tr>
+            )}
+            {!loading && filtered.map((d) => (
               <tr key={d.documentId}>
                 <td><code style={{ fontSize: 12 }}>{d.fileName}</code></td>
-                <td>{d.cnpj}</td>
-                <td>{d.razaoSocial}</td>
-                <td>{d.tipoSocietario}</td>
+                <td>{dash(d.cnpj)}</td>
+                <td>{dash(d.razaoSocial)}</td>
+                <td>{dash(d.tipoSocietario)}</td>
                 <td>{fmtDate(d.uploadedAt)}</td>
                 <td style={{ color: "var(--color-text-secondary)", fontSize: 13 }}>{elapsed(d.uploadedAt)}</td>
                 <td><DocStatusBadge status={d.status} /></td>
-                <td><Link href={`/documents/${d.documentId}`}>Abrir →</Link></td>
+                <td>
+                  {d.status === "falha" ? (
+                    <Link href={`/documents/${d.documentId}#erro`}>Ver erro</Link>
+                  ) : (
+                    <Link href={`/documents/${d.documentId}`}>Abrir →</Link>
+                  )}
+                </td>
               </tr>
             ))}
-            {filtered.length === 0 && (
-              <tr><td colSpan={8} style={{ textAlign: "center", padding: 24, color: "var(--color-text-secondary)" }}>Nenhum documento encontrado para &quot;{query}&quot;.</td></tr>
+            {!loading && filtered.length === 0 && (
+              <tr>
+                <td colSpan={8} style={{ textAlign: "center", padding: 24, color: "var(--color-text-secondary)" }}>
+                  {query
+                    ? `Nenhum documento encontrado para "${query}".`
+                    : "Nenhum documento na API."}
+                </td>
+              </tr>
             )}
           </tbody>
         </table>

@@ -8,6 +8,12 @@ public class Person
     public string DocumentId { get; set; } = string.Empty;
     public string Nome { get; set; } = string.Empty;
     public string Cpf { get; set; } = string.Empty;
+    public string Documento { get; set; } = string.Empty;
+    public string Rg { get; set; } = string.Empty;
+    public string PersonType { get; set; } = string.Empty;
+    public decimal? Quotas { get; set; }
+    public DateOnly? MandateStart { get; set; }
+    public DateOnly? MandateEnd { get; set; }
     public string Qualificacao { get; set; } = string.Empty;
     public string Cargo { get; set; } = string.Empty;
     public PersonStatus Status { get; set; }

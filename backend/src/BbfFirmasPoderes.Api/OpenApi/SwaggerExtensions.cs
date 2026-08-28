@@ -1,4 +1,5 @@
 using Microsoft.OpenApi.Models;
+using Microsoft.Extensions.Hosting;
 
 namespace BbfFirmasPoderes.Api.OpenApi;
 
@@ -13,7 +14,7 @@ public static class SwaggerExtensions
             {
                 Title = "BBF Firmas e Poderes",
                 Version = "v1",
-                Description = "Upload assíncrono /v1/documents (202 + outbox). Sem OCR/KAAS neste recorte."
+                Description = "POST /v1/auth/login (demo). GET /v1/authority/decision (consumer). GET /v1/verification/health (stub). Upload /v1/documents (202). POST /v1/decision/evaluate e replay. GET /v1/audit/trail. KAAS no Worker."
             });
 
             options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
@@ -47,6 +48,9 @@ public static class SwaggerExtensions
 
     public static WebApplication UseBbfSwagger(this WebApplication app)
     {
+        if (!app.Environment.IsDevelopment())
+            return app;
+
         app.UseSwagger(options =>
         {
             options.RouteTemplate = "swagger/{documentName}/swagger.json";

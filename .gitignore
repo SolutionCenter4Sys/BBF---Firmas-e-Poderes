@@ -2,7 +2,9 @@ node_modules
 .next
 dist
 out
+.env
 .env.local
+.env.prod
 .env.development.local
 .env.test.local
 .env.production.local
@@ -20,3 +22,12 @@ backend/.idea/
 # blobs WF-06
 /data/
 backend/src/BbfFirmasPoderes.Api/data/
+backend/src/BbfFirmasPoderes.Worker/data/
+
+# local / agent noise
+graphify-out/
+**/__pycache__/
+*.pyc
+*.tsbuildinfo
+*.bak
+_bmad/*.bak

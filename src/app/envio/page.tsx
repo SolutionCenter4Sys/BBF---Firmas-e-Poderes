@@ -1,37 +1,23 @@
 "use client";
-import { useRef, useState } from "react";
-import { saveKasResult } from "@/lib/kas-result";
-import { extractExecutionId, newCorrelationId } from "@/lib/kas-ids";
+import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
+import { JwtTokenForm } from "@/components/JwtTokenForm";
 import JsonTree from "@/components/JsonTree";
+import { STATUS_POLL_MS } from "@/app/documents/_lib/document-api";
+import { uploadDocument } from "@/hooks/useDocuments";
+import { ApiError } from "@/lib/api";
+import { AUTH_UNAUTHORIZED_EVENT } from "@/lib/auth";
+import { newCorrelationId } from "@/lib/kas-ids";
+import { kasJsonBody, loadKasRunView, resultAlreadyPosted, type KasRunView } from "@/lib/kas-result";
 
 const MAX_UPLOAD_BYTES = 50 * 1024 * 1024;
 const ACCEPT_ATTR = "application/pdf,image/png,image/jpeg,image/webp,image/tiff";
 
-type Stage = "idle" | "file" | "kaas" | "json" | "returned" | "error";
+type Stage = "idle" | "file" | "api" | "worker" | "json" | "done" | "error";
 
 function isAllowedFile(file: File): boolean {
   if (file.type === "application/pdf" || file.type.startsWith("image/")) return true;
   return /\.(pdf|png|jpe?g|webp|tiff?)$/i.test(file.name);
-}
-
-function extractKasBody(payload: unknown): unknown {
-  if (payload && typeof payload === "object" && "body" in payload) {
-    return (payload as { body: unknown }).body;
-  }
-  return payload;
-}
-
-function readMeta(payload: unknown): { correlationId: string | null; executionId: string | null } {
-  if (!payload || typeof payload !== "object") {
-    return { correlationId: null, executionId: extractExecutionId(payload) };
-  }
-  const obj = payload as { correlationId?: unknown; executionId?: unknown };
-  const correlationId = typeof obj.correlationId === "string" ? obj.correlationId : null;
-  const executionId =
-    typeof obj.executionId === "string"
-      ? obj.executionId
-      : extractExecutionId(payload);
-  return { correlationId, executionId };
 }
 
 export default function EnvioKaasPage() {
@@ -39,14 +25,15 @@ export default function EnvioKaasPage() {
   const [file, setFile] = useState<File | null>(null);
   const [dragging, setDragging] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [returning, setReturning] = useState(false);
   const [stage, setStage] = useState<Stage>("idle");
   const [notice, setNotice] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
-  const [kasBody, setKasBody] = useState<unknown>(null);
-  const [returnBody, setReturnBody] = useState<unknown>(null);
+  const [unauthorized, setUnauthorized] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [documentId, setDocumentId] = useState<string | null>(null);
   const [correlationId, setCorrelationId] = useState<string | null>(null);
-  const [executionId, setExecutionId] = useState<string | null>(null);
+  const [view, setView] = useState<KasRunView | null>(null);
+
+  const kasBody = view ? kasJsonBody(view) : null;
 
   const pick = (files: FileList | null) => {
     const next = files?.[0];
@@ -61,112 +48,107 @@ export default function EnvioKaasPage() {
     }
     setFile(next);
     setStage("file");
-    setKasBody(null);
-    setReturnBody(null);
+    setView(null);
+    setDocumentId(null);
     setCorrelationId(null);
-    setExecutionId(null);
-    setNotice({ kind: "ok", text: `${next.name} selecionado. Clique em Enviar para o KAAS.` });
+    setNotice({ kind: "ok", text: `${next.name} selecionado. Clique em Enviar para iniciar a leitura completa no KAAS.` });
   };
 
   const send = async () => {
-    if (!file || busy || returning) return;
+    if (!file || busy) return;
     setBusy(true);
-    setStage("kaas");
-    setReturnBody(null);
+
+    setStage("api");
+    setView(null);
     const corr = newCorrelationId();
     setCorrelationId(corr);
-    setNotice({ kind: "ok", text: "Enviando para o KAAS (sync)… o KAAS gera o JSON. Pode demorar." });
+    setNotice({
+      kind: "ok",
+      text: "Documento aceito. Worker enviará o conteúdo ao KAAS e persistirá o modelo canônico."
+    });
 
     try {
-      const form = new FormData();
-      form.append("file", file);
-      form.append("correlationId", corr);
-      const res = await fetch("/api/kas/run", { method: "POST", body: form });
-      const payload: unknown = await res.json().catch(() => ({ error: "Resposta inválida do proxy." }));
-      const body = extractKasBody(payload);
-      const meta = readMeta(payload);
-
-      setExecutionId(meta.executionId);
-      if (meta.correlationId) setCorrelationId(meta.correlationId);
-
-      saveKasResult({
-        at: new Date().toISOString(),
-        fileName: file.name,
-        httpStatus: res.status,
-        ok: res.ok,
-        body: payload,
-        correlationId: meta.correlationId || corr,
-        executionId: meta.executionId,
-        action: "ingest"
+      const accepted = await uploadDocument(file, corr);
+      setUnauthorized(false);
+      setDocumentId(accepted.documentId);
+      if (accepted.correlationId) setCorrelationId(accepted.correlationId);
+      setStage("worker");
+      setNotice({
+        kind: "ok",
+        text: `${accepted.documentId} aceito (${accepted.status}). Aguardando leitura e extração do KAAS.`
       });
-
-      setKasBody(body);
-      if (res.ok) {
-        setStage("json");
-        setNotice({
-          kind: "ok",
-          text: "KAAS retornou JSON. Confira e clique em Devolver JSON para o KAAS."
-        });
-      } else {
-        setStage("error");
-        const errObj = payload as { error?: string; detail?: string };
-        setNotice({ kind: "err", text: errObj.error || errObj.detail || `HTTP ${res.status}` });
-      }
     } catch (err) {
+      if (err instanceof ApiError && err.status === 401) {
+        setUnauthorized(true);
+        setStage("error");
+        setNotice({ kind: "err", text: err.message });
+        return;
+      }
       setStage("error");
-      setNotice({ kind: "err", text: err instanceof Error ? err.message : "Falha ao enviar." });
+      setNotice({
+        kind: "err",
+        text: err instanceof Error ? err.message : "Falha ao enviar."
+      });
     } finally {
       setBusy(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
     }
   };
 
-  const sendBack = async () => {
-    if (kasBody == null || !correlationId || busy || returning) return;
-    setReturning(true);
-    setNotice({ kind: "ok", text: "Devolvendo JSON para a mesma jornada (action: result)…" });
+  useEffect(() => {
+    const onUnauthorized = () => setUnauthorized(true);
+    window.addEventListener(AUTH_UNAUTHORIZED_EVENT, onUnauthorized);
+    return () => window.removeEventListener(AUTH_UNAUTHORIZED_EVENT, onUnauthorized);
+  }, []);
 
-    try {
-      const res = await fetch("/api/kas/return", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          correlationId,
-          executionId,
-          fileName: file?.name || "",
-          result: kasBody
-        })
-      });
-      const payload: unknown = await res.json().catch(() => ({ error: "Resposta inválida do proxy." }));
-      const body = extractKasBody(payload);
+  useEffect(() => {
+    if (!documentId) return;
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
 
-      saveKasResult({
-        at: new Date().toISOString(),
-        fileName: file?.name || "",
-        httpStatus: res.status,
-        ok: res.ok,
-        body: payload,
-        correlationId,
-        executionId,
-        action: "result"
-      });
-
-      setReturnBody(body);
-      if (res.ok) {
-        setStage("returned");
-        setNotice({ kind: "ok", text: "JSON devolvido para o KAAS na mesma jornada." });
-      } else {
+    const tick = async () => {
+      try {
+        const next = await loadKasRunView(documentId);
+        if (cancelled) return;
+        setUnauthorized(false);
+        setView(next);
+        if (next.polling) {
+          setStage("worker");
+          timer = setTimeout(() => void tick(), STATUS_POLL_MS);
+          return;
+        }
+        if (next.status === "falha") {
+          setStage("error");
+          setNotice({ kind: "err", text: "Pipeline falhou. Verifique o contrato e envie novamente." });
+          return;
+        }
+        setStage(resultAlreadyPosted(next.status) ? "done" : "json");
+        setNotice({
+          kind: "ok",
+          text: "Leitura concluída. Sócios, representantes e poderes estão no JSON canônico abaixo."
+        });
+      } catch (err) {
+        if (cancelled) return;
+        if (err instanceof ApiError && err.status === 401) {
+          setUnauthorized(true);
+          setStage("error");
+          setNotice({ kind: "err", text: err.message });
+          return;
+        }
         setStage("error");
-        const errObj = payload as { error?: string; detail?: string };
-        setNotice({ kind: "err", text: errObj.error || errObj.detail || `HTTP ${res.status}` });
+        setNotice({
+          kind: "err",
+          text: err instanceof Error ? err.message : "Falha ao consultar status."
+        });
       }
-    } catch (err) {
-      setStage("error");
-      setNotice({ kind: "err", text: err instanceof Error ? err.message : "Falha ao devolver." });
-    } finally {
-      setReturning(false);
-    }
-  };
+    };
+
+    void tick();
+    return () => {
+      cancelled = true;
+      if (timer) clearTimeout(timer);
+    };
+  }, [documentId]);
 
   const copyJson = async () => {
     if (kasBody == null) return;
@@ -175,22 +157,18 @@ export default function EnvioKaasPage() {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const stepClass = (id: "file" | "kaas" | "json" | "callback") => {
-    if (stage === "error" && (id === "kaas" || id === "json" || id === "callback")) return "pipeline-step";
-    if (id === "callback") {
-      if (stage === "returned") return "pipeline-step done";
-      if (stage === "json") return "pipeline-step active";
-      return "pipeline-step";
-    }
+  const stepClass = (id: "file" | "api" | "worker" | "json") => {
+    if (stage === "error" && (id === "api" || id === "worker" || id === "json")) return "pipeline-step";
     const order: Record<Stage, number> = {
       idle: 0,
       file: 1,
-      kaas: 2,
-      json: 3,
-      returned: 4,
+      api: 2,
+      worker: 3,
+      json: 4,
+      done: 5,
       error: 0
     };
-    const target: Record<string, number> = { file: 1, kaas: 2, json: 3 };
+    const target: Record<string, number> = { file: 1, api: 2, worker: 3, json: 4 };
     const now = order[stage];
     const t = target[id] ?? 0;
     if (now > t) return "pipeline-step done";
@@ -198,28 +176,42 @@ export default function EnvioKaasPage() {
     return "pipeline-step";
   };
 
-  const canReturn = kasBody != null && !!correlationId && !busy && !returning && stage !== "returned";
-
   return (
     <>
       <div className="page-header">
         <div>
           <h2>Enviar para o KAAS</h2>
           <div className="subtitle">
-            Arquivo → KAAS (ingest) → JSON → mesma jornada (result).
+            Escolha o contrato → KAAS lê o documento completo → tela mostra o modelo canônico.
           </div>
         </div>
-        <button type="button" className="btn btn--primary" onClick={send} disabled={!file || busy || returning}>
-          {busy ? "Enviando…" : "Enviar para o KAAS"}
+        <button
+          type="button"
+          className="btn btn--primary"
+          onClick={() => void send()}
+          disabled={!file || busy}
+        >
+          {busy ? "Enviando…" : "Enviar (API .NET)"}
         </button>
       </div>
 
       <div className="pipeline" aria-label="Fluxo KAAS">
         <div className={stepClass("file")}>1. Arquivo</div>
-        <div className={stepClass("kaas")}>2. KAAS</div>
-        <div className={stepClass("json")}>3. JSON</div>
-        <div className={stepClass("callback")}>4. Devolver para o KAAS</div>
+        <div className={stepClass("api")}>2. API .NET</div>
+        <div className={stepClass("worker")}>3. Worker KAAS</div>
+        <div className={stepClass("json")}>4. Dados extraídos</div>
       </div>
+
+      {unauthorized && (
+        <JwtTokenForm
+          roleLabel="operador"
+          hint="POST /v1/documents exige Bearer. Cole JWT operador (sessionStorage bbf.access_token)."
+          onSaved={async () => {
+            setUnauthorized(false);
+            if (file && !documentId) await send();
+          }}
+        />
+      )}
 
       {notice && (
         <div className={`banner ${notice.kind === "ok" ? "banner--ok" : "banner--err"}`} role="status">
@@ -240,7 +232,7 @@ export default function EnvioKaasPage() {
           className={`dropzone${dragging ? " dropzone--active" : ""}`}
           role="button"
           tabIndex={0}
-          aria-label="Escolher arquivo para enviar para o KAAS"
+          aria-label="Escolher arquivo para enviar via API .NET"
           onClick={() => fileInputRef.current?.click()}
           onKeyDown={(e) => {
             if (e.key === "Enter" || e.key === " ") {
@@ -278,37 +270,50 @@ export default function EnvioKaasPage() {
       </div>
 
       <div className="card">
-        <h3>2–3. KAAS gera JSON</h3>
+        <h3>2–3. KAAS lê e estrutura o contrato</h3>
         <p style={{ margin: "0 0 12px", color: "var(--color-text-secondary)", fontSize: 14 }}>
-          O arquivo vai para a jornada <code>testes-firmas-e-poderes</code> (
-          <code>mode: sync</code>, <code>payload.action: ingest</code>).
-          O KAAS processa e retorna JSON nesta tela.
+          API enfileira o documento. Worker chama a jornada <code>testes-firmas-e-poderes</code>.
+          A tela acompanha <code>GET /v1/documents/{"{id}"}/status</code> e carrega o canônico.
         </p>
-        {(correlationId || executionId) && (
+        {(documentId || correlationId || view) && (
           <p style={{ margin: "0 0 12px", fontSize: 13, color: "var(--color-text-muted)" }}>
+            {documentId && (
+              <>
+                <code>documentId</code>:{" "}
+                <Link href={`/documents/${documentId}`}>{documentId}</Link>
+              </>
+            )}
+            {documentId && correlationId && " · "}
             {correlationId && (
               <>
                 <code>correlationId</code>: {correlationId}
               </>
             )}
-            {correlationId && executionId && " · "}
-            {executionId && (
+            {view && (
               <>
-                <code>executionId</code>: {executionId}
+                {" · "}
+                <code>status</code>: {view.status}
+                {view.polling ? " (poll 2,5 s)" : null}
               </>
             )}
-            {!executionId && correlationId && " · KAAS não devolveu executionId"}
           </p>
         )}
         {!kasBody && (
           <p style={{ margin: 0, color: "var(--color-text-muted)", fontSize: 14 }}>
-            {busy ? "Aguardando a resposta do KAAS…" : "Ainda sem JSON. Escolha um arquivo e envie."}
+            {busy || (view?.polling ?? false)
+              ? "Aguardando worker…"
+              : "Ainda sem JSON. Escolha um arquivo e envie."}
           </p>
         )}
         {kasBody != null && (
           <>
-            <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 8 }}>
-              <button type="button" className="btn btn--secondary" onClick={copyJson}>
+            <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 8, gap: 8 }}>
+              {documentId && (
+                <Link href={`/kas-result?documentId=${encodeURIComponent(documentId)}`} className="btn btn--ghost">
+                  Abrir retorno
+                </Link>
+              )}
+              <button type="button" className="btn btn--secondary" onClick={() => void copyJson()}>
                 {copied ? "Copiado" : "Copiar JSON"}
               </button>
             </div>
@@ -319,45 +324,6 @@ export default function EnvioKaasPage() {
         )}
       </div>
 
-      <div className="card">
-        <h3>4. Devolver o JSON para o KAAS</h3>
-        <p style={{ margin: "0 0 8px", fontSize: 14 }}>
-          Segundo POST na <strong>mesma</strong> jornada <code>testes-firmas-e-poderes/run</code>.
-          Sem arquivo. Header <code>X-Flow-Api-Key</code>. Payload:
-        </p>
-        <pre style={{ fontSize: 12 }}>
-{`{
-  "mode": "sync",
-  "payload": {
-    "action": "result",
-    "correlationId": "${correlationId || "corr_<uuid>"}",
-    "executionId": "${executionId || "<se o KAAS devolver>"}",
-    "fileName": "${file?.name || "arquivo.pdf"}",
-    "result": { /* JSON da etapa 3 */ }
-  }
-}`}
-        </pre>
-        <p style={{ margin: "8px 0 0", fontSize: 13, color: "var(--color-text-muted)" }}>
-          A jornada precisa ramificar em <code>payload.action === "result"</code>. Sem isso, o segundo
-          /run tenta processar arquivo de novo.
-        </p>
-        <button
-          type="button"
-          className="btn btn--primary"
-          disabled={!canReturn}
-          onClick={sendBack}
-          style={{ marginTop: 12 }}
-        >
-          {returning ? "Devolvendo…" : stage === "returned" ? "Já devolvido" : "Devolver JSON para o KAAS"}
-        </button>
-        {returnBody != null && (
-          <div style={{ marginTop: 16 }}>
-            <h3>Resposta da volta</h3>
-            {typeof returnBody === "object" ? <JsonTree value={returnBody} /> : <pre>{String(returnBody)}</pre>}
-            <pre>{JSON.stringify(returnBody, null, 2)}</pre>
-          </div>
-        )}
-      </div>
     </>
   );
 }

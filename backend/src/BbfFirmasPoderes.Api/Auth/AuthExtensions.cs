@@ -34,6 +34,9 @@ public static class AuthExtensions
         }
 
         services.AddSingleton(jwt);
+        services.Configure<DemoUsersOptions>(configuration.GetSection(DemoUsersOptions.SectionName));
+        services.Configure<DatabaseStartupOptions>(configuration.GetSection(DatabaseStartupOptions.SectionName));
+        services.AddSingleton<DemoJwtIssuer>();
         services.AddHttpContextAccessor();
         services.Replace(ServiceDescriptor.Scoped<IAuditContext, HttpAuditContext>());
 
@@ -118,6 +121,21 @@ public static class AuthExtensions
 
             options.AddPolicy(Policies.DocumentsRead, policy =>
                 policy.RequireRole(Roles.Operador, Roles.Auditor, Roles.Consumer, Roles.Admin));
+
+            options.AddPolicy(Policies.DecisionRead, policy =>
+                policy.RequireRole(Roles.Operador, Roles.Admin));
+
+            options.AddPolicy(Policies.DecisionReplay, policy =>
+                policy.RequireRole(Roles.Auditor, Roles.Consumer, Roles.Admin));
+
+            options.AddPolicy(Policies.ApiDecisionRead, policy =>
+                policy.RequireAssertion(ctx => ScopeClaims.CanReadAuthority(ctx.User)));
+
+            options.AddPolicy(Policies.VerificationHealth, policy =>
+                policy.RequireRole(Roles.Operador, Roles.Admin));
+
+            options.AddPolicy(Policies.AuditRead, policy =>
+                policy.RequireRole(Roles.Auditor, Roles.Admin));
         });
 
         return services;

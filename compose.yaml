@@ -1,0 +1,132 @@
+# BBF Firmas e Poderes — stack local (WF-19)
+# Fora de escopo: ECS, RDS, push para registry AWS.
+name: bbf-firmas
+
+services:
+  db:
+    image: postgres:16
+    container_name: bbf-db
+    env_file: .env.example
+    environment:
+      POSTGRES_USER: bbf
+      POSTGRES_PASSWORD: bbf
+      POSTGRES_DB: bbf_firmas
+    volumes:
+      - bbf_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U bbf -d bbf_firmas"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+    networks:
+      - bbf
+    restart: unless-stopped
+
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: api
+    container_name: bbf-api
+    env_file: .env.example
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_HTTP_PORTS: "8080"
+      ConnectionStrings__Postgres: Host=db;Port=5432;Database=bbf_firmas;Username=bbf;Password=bbf
+      Documents__StorageRoot: /data/docs
+      Database__MigrateOnStartup: "true"
+    volumes:
+      - bbf_docs:/data/docs
+    ports:
+      - "8080:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8080/health/ready"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 40s
+    networks:
+      - bbf
+    restart: unless-stopped
+
+  worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: worker
+    container_name: bbf-worker
+    env_file: .env.example
+    environment:
+      DOTNET_ENVIRONMENT: Production
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_HTTP_PORTS: "8081"
+      ConnectionStrings__Postgres: Host=db;Port=5432;Database=bbf_firmas;Username=bbf;Password=bbf
+      Documents__StorageRoot: /data/docs
+      # Interpola .env (gitignorado). Vazio = ingest live falha (demo seed continua).
+      Kas__ApiKey: ${Kas__ApiKey:-}
+    volumes:
+      - bbf_docs:/data/docs
+    depends_on:
+      db:
+        condition: service_healthy
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8081/health/ready"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 25s
+    networks:
+      - bbf
+    restart: unless-stopped
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: http://localhost:8080
+        API_INTERNAL_URL: http://api:8080
+    container_name: bbf-web
+    env_file: .env.example
+    environment:
+      NODE_ENV: production
+      HOSTNAME: 0.0.0.0
+      PORT: "3000"
+      NEXT_PUBLIC_API_URL: http://localhost:8080
+      API_INTERNAL_URL: http://api:8080
+    ports:
+      # :3000 está com Check-in Audiências neste host. UI BBF na 3002.
+      - "3002:3000"
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "require('http').get('http://127.0.0.1:3000',r=>process.exit(r.statusCode<500?0:1)).on('error',()=>process.exit(1))",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 8
+      start_period: 20s
+    networks:
+      - bbf
+    restart: unless-stopped
+
+networks:
+  bbf:
+    name: bbf-internal
+    driver: bridge
+
+volumes:
+  bbf_pgdata:
+  bbf_docs:

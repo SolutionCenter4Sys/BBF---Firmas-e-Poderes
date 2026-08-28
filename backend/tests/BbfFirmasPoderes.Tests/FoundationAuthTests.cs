@@ -88,7 +88,8 @@ public class FoundationAuthTests : IClassFixture<ApiFactory>
         Assert.True(response.IsSuccessStatusCode, body);
         Assert.Contains("openapi", body, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("/v1/documents", body);
-        Assert.DoesNotContain("/v1/authority", body);
+        Assert.Contains("/v1/authority/decision", body);
+        Assert.Contains("/v1/verification/health", body);
     }
 
     [Fact]

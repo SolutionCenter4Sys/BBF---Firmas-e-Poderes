@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import { MockDataBanner } from "@/components/MockDataBanner";
 import { roles, users } from "@/lib/mocks";
 
 const fmtDate = (iso: string) => new Date(iso).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
@@ -19,6 +20,8 @@ export default function RolesPage() {
           <button className="btn btn--primary">+ Novo perfil</button>
         </div>
       </div>
+
+      <MockDataBanner detail="GET de perfis/usuários não existe. Seed visual." />
 
       <div className="card" style={{ padding: 0 }}>
         <div style={{ display: "flex", borderBottom: "1px solid var(--color-border-default)" }}>

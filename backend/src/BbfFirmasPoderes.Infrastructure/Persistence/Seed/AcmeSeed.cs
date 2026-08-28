@@ -5,7 +5,8 @@ using Microsoft.EntityFrameworkCore;
 namespace BbfFirmasPoderes.Infrastructure.Persistence.Seed;
 
 /// <summary>
-/// Seed mínimo WF-04: documento ACME = <c>doc_001</c> de <c>src/lib/mocks.ts</c>.
+/// Seed WF-04: documento ACME = <c>doc_001</c> de <c>src/lib/mocks.ts</c> (APROVADO).
+/// Docs 003/004 (MANUAL/REPROVADO) em <see cref="DemoSeed"/>.
 /// </summary>
 internal static class AcmeSeed
 {

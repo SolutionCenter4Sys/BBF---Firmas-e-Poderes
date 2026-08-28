@@ -1,6 +1,8 @@
+using BbfFirmasPoderes.Domain.Audit;
 using BbfFirmasPoderes.Domain.Documents;
 using BbfFirmasPoderes.Domain.Entities;
 using BbfFirmasPoderes.Domain.Enums;
+using BbfFirmasPoderes.Domain.Kaas;
 using BbfFirmasPoderes.Infrastructure.Persistence;
 using BbfFirmasPoderes.Infrastructure.Storage;
 using Microsoft.EntityFrameworkCore;
@@ -49,16 +51,29 @@ public sealed class DocumentIngestService(
             return new IngestOutcome.InvalidSize($"Arquivo excede o limite de {maxBytes} bytes.");
 
         var fileName = UploadRules.SanitizeFileName(file.FileName);
-        if (!UploadRules.IsAllowed(file.ContentType, fileName))
-            return new IngestOutcome.UnsupportedType();
-
+        Stream? buffered = null;
+        StoredBlob? stored = null;
         var documentId = $"doc_{Guid.NewGuid():N}";
         var uploadedAt = DateTimeOffset.UtcNow;
-        StoredBlob? stored = null;
 
         try
         {
-            stored = await blobStore.SaveAsync(documentId, file.Content, cancellationToken);
+            var content = file.Content;
+            if (!content.CanSeek)
+            {
+                buffered = new MemoryStream();
+                await content.CopyToAsync(buffered, cancellationToken);
+                buffered.Position = 0;
+                content = buffered;
+            }
+
+            var header = new byte[16];
+            var read = await content.ReadAsync(header.AsMemory(0, header.Length), cancellationToken);
+            content.Position = 0;
+            if (!UploadRules.IsAllowed(file.ContentType, fileName, header.AsSpan(0, read)))
+                return new IngestOutcome.UnsupportedType();
+
+            stored = await blobStore.SaveAsync(documentId, content, cancellationToken);
 
             db.Documents.Add(new Document
             {
@@ -96,6 +111,14 @@ public sealed class DocumentIngestService(
                 CorrelationId = correlationId
             });
 
+            db.AuditEvents.Add(AuditEventFactory.Create(
+                AuditEventTypes.DocumentUploaded,
+                correlationId,
+                actor,
+                $"Upload de {fileName}",
+                documentId,
+                occurredAt: uploadedAt));
+
             await db.SaveChangesAsync(cancellationToken);
         }
         catch
@@ -104,16 +127,46 @@ public sealed class DocumentIngestService(
                 File.Delete(stored.Path);
             throw;
         }
+        finally
+        {
+            if (buffered is not null)
+                await buffered.DisposeAsync();
+        }
 
         return new IngestOutcome.Accepted(documentId, nameof(DocStatus.pendente), correlationId, uploadedAt);
     }
 
-    public Task<List<Document>> ListAsync(CancellationToken cancellationToken = default)
-        => db.Documents
-            .AsNoTracking()
+    public Task<List<Document>> ListAsync(DocStatus? status = null, CancellationToken cancellationToken = default)
+    {
+        var query = db.Documents.AsNoTracking();
+        if (status is not null)
+            query = query.Where(d => d.Status == status);
+
+        return query
             .OrderByDescending(d => d.UploadedAt)
             .ToListAsync(cancellationToken);
+    }
 
     public Task<Document?> GetAsync(string documentId, CancellationToken cancellationToken = default)
         => db.Documents.AsNoTracking().FirstOrDefaultAsync(d => d.DocumentId == documentId, cancellationToken);
+
+    public async Task<string?> GetLastKasErrorAsync(string documentId, CancellationToken cancellationToken = default)
+    {
+        var run = await db.KasRuns.AsNoTracking()
+            .Where(r => r.DocumentId == documentId)
+            .OrderByDescending(r => r.OccurredAt)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        if (run is null)
+            return "Pipeline KAAS falhou sem resposta persistida.";
+
+        return KasErrorText.FromHttp(run.HttpStatus, run.PayloadJson, run.Ok ? "OK" : "Error");
+    }
+
+    public Task<Document?> GetCanonicalAsync(string documentId, CancellationToken cancellationToken = default)
+        => db.Documents
+            .AsNoTracking()
+            .Include(d => d.Socios)
+            .Include(d => d.Poderes)
+            .FirstOrDefaultAsync(d => d.DocumentId == documentId, cancellationToken);
 }

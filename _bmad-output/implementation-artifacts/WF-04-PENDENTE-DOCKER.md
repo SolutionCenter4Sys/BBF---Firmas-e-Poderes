@@ -1,8 +1,7 @@
 # WF-04 — pendência Docker (executar depois)
 
 **Branch:** `wf-04-ef-model`  
-**Status:** modelo + migration `AddDomainModel` + seed ACME **prontos**. Banco **não** atualizado.  
-**Motivo:** WSL 2 não instalado. Docker Desktop engine Linux em 500.
+**Status (27/08/2026):** **FECHADO neste host.** `\dt` lista 8 tabelas. Seed `doc_001` ACME / `doc_004` Delta / `doc_003` Gama no Postgres.
 
 **Retomar neste chat (ou novo):**  
 `executa a pendência Docker do WF-04` + este arquivo.

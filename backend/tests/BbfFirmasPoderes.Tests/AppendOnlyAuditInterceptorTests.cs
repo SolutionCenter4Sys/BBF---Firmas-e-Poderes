@@ -17,7 +17,7 @@ public class AppendOnlyAuditInterceptorTests
         db.Documents.Add(NewDocument("doc_wf05"));
         await db.SaveChangesAsync();
 
-        var audit = Assert.Single(db.AuditEvents.Local, e => e.Type == "command.persisted");
+        var audit = Assert.Single(db.AuditEvents.Local, e => e.Type == AuditEventTypes.CommandPersisted);
         Assert.Equal("corr_cmd", audit.CorrelationId);
         Assert.Equal("operador-1", audit.Actor);
         Assert.Equal("doc_wf05", audit.DocumentId);
@@ -68,6 +68,28 @@ public class AppendOnlyAuditInterceptorTests
 
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => db.SaveChangesAsync());
         Assert.Contains("append-only", ex.Message);
+    }
+
+    [Fact]
+    public async Task SaveChanges_TypedAuditEvent_DoesNotAppendCommandPersisted()
+    {
+        await using var db = CreateContext(new StubAuditContext("corr_typed", "operador-1"));
+
+        db.Documents.Add(NewDocument("doc_typed"));
+        db.AuditEvents.Add(new AuditEvent
+        {
+            EventId = "ev_typed",
+            CorrelationId = "corr_typed",
+            DocumentId = "doc_typed",
+            Type = AuditEventTypes.DocumentUploaded,
+            Actor = "operador-1",
+            OccurredAt = DateTimeOffset.UtcNow,
+            Details = "Upload"
+        });
+        await db.SaveChangesAsync();
+
+        Assert.DoesNotContain(db.AuditEvents, e => e.Type == AuditEventTypes.CommandPersisted);
+        Assert.Single(db.AuditEvents, e => e.Type == AuditEventTypes.DocumentUploaded);
     }
 
     private static AppDbContext CreateContext(IAuditContext auditContext)

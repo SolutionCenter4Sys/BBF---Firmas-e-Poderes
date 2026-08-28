@@ -147,6 +147,10 @@ erDiagram
 
 ## Seed
 
-Migration `AddDomainModel` insere o documento **ACME** (`doc_001` de `mocks.ts`): 3 sócios, 2 poderes, decisão `dec_001`, evento `ev_0001`, 1 `kas_runs` com payload jsonb de laboratório (sem chamada KAAS live).
+Migration `AddDomainModel` insere o documento **ACME** (`doc_001` de `mocks.ts`): 3 sócios, 2 poderes, decisão `dec_001` APROVADO, evento `ev_0001`, 1 `kas_runs` com payload jsonb de laboratório (sem chamada KAAS live).
+
+Migration `AddDemoSeed` (WF-20) espelha mocks **doc_004** (Delta EIRELI, `dec_002` REPROVADO) e **doc_003** (Gama Investimentos, `dec_003` MANUAL / `revisao_humana`).
+
+Usuários demo operador/auditor **não** vão para tabela: senhas só em `.env.example` (`DemoUsers__*Password`). Login: `POST /v1/auth/login`.
 
 Migration `AddDocumentStorageAndOutbox` (WF-06): colunas `documents.content_type` / `documents.storage_path` + tabela `outbox_messages`. Blob no filesystem (`data/docs`), não bytea.

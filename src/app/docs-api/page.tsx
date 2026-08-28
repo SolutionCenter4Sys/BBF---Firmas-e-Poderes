@@ -1,5 +1,7 @@
 "use client";
 import { useState } from "react";
+import { MockDataBanner } from "@/components/MockDataBanner";
+import { getApiBaseUrl } from "@/lib/api";
 import { openApiEndpoints, type OpenApiEndpoint } from "@/lib/mocks";
 
 const methodColors: Record<OpenApiEndpoint["method"], string> = {
@@ -11,6 +13,7 @@ const methodColors: Record<OpenApiEndpoint["method"], string> = {
 
 export default function DocsApiPage() {
   const [selected, setSelected] = useState<OpenApiEndpoint>(openApiEndpoints[0]);
+  const swaggerHref = `${getApiBaseUrl()}/swagger`;
 
   return (
     <>
@@ -20,10 +23,13 @@ export default function DocsApiPage() {
           <div className="subtitle">Spec versionado · base URL <code>https://api.bbf.bradesco.com.br/v1</code> · auth: OAuth2 + mTLS</div>
         </div>
         <div style={{ display: "flex", gap: 8 }}>
+          <a href={swaggerHref} className="btn btn--primary" target="_blank" rel="noreferrer">Abrir Swagger .NET</a>
           <button className="btn btn--secondary">Baixar openapi.json</button>
           <button className="btn btn--secondary">Baixar openapi.yaml</button>
         </div>
       </div>
+
+      <MockDataBanner detail="Catálogo abaixo é seed. Spec ao vivo: Swagger da API .NET." />
 
       <div style={{ display: "grid", gridTemplateColumns: "320px 1fr", gap: 16 }}>
         <aside className="card" style={{ position: "sticky", top: 16, alignSelf: "start", maxHeight: "calc(100vh - 32px)", overflowY: "auto" }}>

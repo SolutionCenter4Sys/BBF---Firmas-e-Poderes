@@ -1,11 +1,17 @@
+using BbfFirmasPoderes.Api.Audit;
 using BbfFirmasPoderes.Api.Auth;
+using BbfFirmasPoderes.Api.Authority;
+using BbfFirmasPoderes.Api.Decisions;
 using BbfFirmasPoderes.Api.Documents;
 using BbfFirmasPoderes.Api.Logging;
 using BbfFirmasPoderes.Api.Middleware;
 using BbfFirmasPoderes.Api.OpenApi;
+using BbfFirmasPoderes.Api.RateLimiting;
+using BbfFirmasPoderes.Api.Verification;
 using BbfFirmasPoderes.Domain.Correlation;
 using BbfFirmasPoderes.Domain.Documents;
 using BbfFirmasPoderes.Infrastructure;
+using BbfFirmasPoderes.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
@@ -29,6 +35,19 @@ try
 
     builder.Services.AddInfrastructure(builder.Configuration);
     builder.Services.AddBbfAuth(builder.Configuration);
+    builder.Services.AddCors(options =>
+    {
+        options.AddPolicy("bbf-front", policy =>
+            policy.SetIsOriginAllowed(static origin =>
+                {
+                    if (!Uri.TryCreate(origin, UriKind.Absolute, out var uri))
+                        return false;
+                    return uri.Host is "localhost" or "127.0.0.1";
+                })
+                .AllowAnyHeader()
+                .AllowAnyMethod());
+    });
+    builder.Services.AddAuthorityRateLimiting(builder.Configuration);
     builder.Services.AddBbfSwagger();
     builder.Services.ConfigureHttpJsonOptions(options =>
     {
@@ -65,6 +84,7 @@ try
     });
 
     var app = builder.Build();
+    DatabaseStartup.MigrateIfEnabled(app.Services, app.Configuration);
 
     app.UseExceptionHandler();
     app.UseStatusCodePages();
@@ -100,8 +120,10 @@ try
         }
     });
     app.UseBbfSwagger();
+    app.UseCors("bbf-front");
     app.UseAuthentication();
     app.UseAuthorization();
+    app.UseRateLimiter();
 
     app.MapHealthChecks("/health/live", new HealthCheckOptions
     {
@@ -114,7 +136,12 @@ try
     }).RequireAuthorization(BbfFirmasPoderes.Domain.Auth.Policies.HealthRead);
 
     app.MapHealthChecks("/health/ready").AllowAnonymous();
+    app.MapAuth();
     app.MapDocuments();
+    app.MapDecisions();
+    app.MapAuthority();
+    app.MapVerification();
+    app.MapAudit();
 
     app.Run();
 }

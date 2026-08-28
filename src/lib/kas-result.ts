@@ -1,27 +1,58 @@
-export const KAS_RESULT_KEY = "kas:last-run";
+import type { DocStatus } from "@/domain";
+import {
+  getDocumentCanonical,
+  getDocumentStatus,
+  isProcessingStatus,
+  type CanonicalDto,
+  type DocumentStatusDto
+} from "@/app/documents/_lib/document-api";
 
-export interface KasRunResult {
-  at: string;
+export interface KasRunView {
+  documentId: string;
   fileName: string;
-  httpStatus: number;
+  status: DocStatus;
+  correlationId: string | null;
+  uploadedAt: string;
   ok: boolean;
-  body: unknown;
-  correlationId?: string;
-  executionId?: string | null;
-  action?: "ingest" | "result";
+  polling: boolean;
+  canonical: CanonicalDto | null;
+  statusDto: DocumentStatusDto;
 }
 
-export function saveKasResult(result: KasRunResult): void {
-  sessionStorage.setItem(KAS_RESULT_KEY, JSON.stringify(result));
+export function resultAlreadyPosted(status: DocStatus): boolean {
+  return status !== "pendente"
+    && status !== "falha"
+    && !isProcessingStatus(status);
 }
 
-export function loadKasResult(): KasRunResult | null {
-  if (typeof window === "undefined") return null;
-  const raw = sessionStorage.getItem(KAS_RESULT_KEY);
-  if (!raw) return null;
+export async function loadKasRunView(documentId: string): Promise<KasRunView> {
+  const statusDto = await getDocumentStatus(documentId);
+  let canonical: CanonicalDto | null = null;
   try {
-    return JSON.parse(raw) as KasRunResult;
+    canonical = await getDocumentCanonical(documentId);
   } catch {
-    return null;
+    canonical = null;
   }
+
+  return {
+    documentId: statusDto.documentId,
+    fileName: statusDto.fileName,
+    status: statusDto.status,
+    correlationId: statusDto.correlationId,
+    uploadedAt: statusDto.uploadedAt,
+    ok: statusDto.status !== "falha",
+    polling: isProcessingStatus(statusDto.status),
+    canonical,
+    statusDto
+  };
+}
+
+export function kasJsonBody(view: KasRunView): unknown {
+  if (view.canonical) return view.canonical;
+
+  return {
+    status: view.status,
+    correlationId: view.correlationId,
+    fileName: view.fileName
+  };
 }

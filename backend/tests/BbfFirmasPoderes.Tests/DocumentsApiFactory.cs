@@ -9,7 +9,7 @@ using Microsoft.Extensions.Hosting;
 
 namespace BbfFirmasPoderes.Tests;
 
-public sealed class DocumentsApiFactory : WebApplicationFactory<Program>
+public class DocumentsApiFactory : WebApplicationFactory<Program>
 {
     public string StorageRoot { get; } = Path.Combine(Path.GetTempPath(), "bbf-docs-" + Guid.NewGuid().ToString("N"));
 
@@ -21,6 +21,10 @@ public sealed class DocumentsApiFactory : WebApplicationFactory<Program>
         builder.UseSetting("Jwt:Issuer", TestAuth.Issuer);
         builder.UseSetting("Jwt:Audience", TestAuth.Audience);
         builder.UseSetting("Jwt:SigningKey", TestAuth.SigningKey);
+        builder.UseSetting("DemoUsers:OperadorEmail", TestAuth.DemoOperadorEmail);
+        builder.UseSetting("DemoUsers:OperadorPassword", TestAuth.DemoOperadorPassword);
+        builder.UseSetting("DemoUsers:AuditorEmail", TestAuth.DemoAuditorEmail);
+        builder.UseSetting("DemoUsers:AuditorPassword", TestAuth.DemoAuditorPassword);
         builder.UseSetting("Documents:StorageRoot", StorageRoot);
         builder.UseSetting("Documents:MaxUploadBytes", "1024");
         builder.UseSetting(

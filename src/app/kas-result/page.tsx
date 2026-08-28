@@ -1,87 +1,142 @@
 "use client";
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { loadKasResult, type KasRunResult } from "@/lib/kas-result";
+import { useSearchParams } from "next/navigation";
+import { JwtTokenForm } from "@/components/JwtTokenForm";
+import JsonTree from "@/components/JsonTree";
+import { STATUS_POLL_MS } from "@/app/documents/_lib/document-api";
+import { listDocuments } from "@/hooks/useDocuments";
+import { ApiError } from "@/lib/api";
+import { AUTH_UNAUTHORIZED_EVENT } from "@/lib/auth";
+import { kasJsonBody, loadKasRunView, type KasRunView } from "@/lib/kas-result";
 
-function JsonNode({ value, name }: { value: unknown; name?: string }) {
-  if (value === null || typeof value !== "object") {
-    const text = typeof value === "string" ? `"${value}"` : String(value);
-    return (
-      <div className="json-row">
-        {name !== undefined && <span className="json-key">{name}: </span>}
-        <span className="json-leaf">{text}</span>
-      </div>
-    );
-  }
-
-  const entries = Array.isArray(value)
-    ? value.map((v, i) => [String(i), v] as const)
-    : Object.entries(value);
-
-  return (
-    <details className="json-block" open>
-      <summary>
-        {name !== undefined ? <span className="json-key">{name}</span> : null}
-        <span className="json-meta">{Array.isArray(value) ? `Array(${value.length})` : "Object"}</span>
-      </summary>
-      <div className="json-children">
-        {entries.map(([k, v]) => (
-          <JsonNode key={k} name={k} value={v} />
-        ))}
-      </div>
-    </details>
-  );
-}
-
-export default function KasResultPage() {
-  const [result, setResult] = useState<KasRunResult | null>(null);
+function KasResultWorkspace() {
+  const searchParams = useSearchParams();
+  const documentIdParam = searchParams.get("documentId") ?? "";
+  const [documentId, setDocumentId] = useState(documentIdParam);
+  const [view, setView] = useState<KasRunView | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [unauthorized, setUnauthorized] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [reloadTick, setReloadTick] = useState(0);
 
   useEffect(() => {
-    setResult(loadKasResult());
+    setDocumentId(documentIdParam);
+  }, [documentIdParam]);
+
+  useEffect(() => {
+    const onUnauthorized = () => setUnauthorized(true);
+    window.addEventListener(AUTH_UNAUTHORIZED_EVENT, onUnauthorized);
+    return () => window.removeEventListener(AUTH_UNAUTHORIZED_EVENT, onUnauthorized);
   }, []);
 
+  useEffect(() => {
+    let cancelled = false;
+
+    const resolveId = async (): Promise<string | null> => {
+      if (documentId.trim()) return documentId.trim();
+      const docs = await listDocuments();
+      const latest = [...docs].sort(
+        (a, b) => new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime()
+      )[0];
+      return latest?.documentId ?? null;
+    };
+
+    const tick = async (id: string) => {
+      const next = await loadKasRunView(id);
+      if (cancelled) return next;
+      setView(next);
+      setUnauthorized(false);
+      setError(null);
+      return next;
+    };
+
+    const run = async () => {
+      setLoading(true);
+      try {
+        const id = await resolveId();
+        if (cancelled) return;
+        if (!id) {
+          setView(null);
+          setError(null);
+          return;
+        }
+        if (!documentId.trim()) setDocumentId(id);
+        const next = await tick(id);
+        if (cancelled || !next.polling) return;
+        const poll = async () => {
+          const again = await tick(id);
+          if (cancelled || !again.polling) return;
+          window.setTimeout(() => void poll(), STATUS_POLL_MS);
+        };
+        window.setTimeout(() => void poll(), STATUS_POLL_MS);
+      } catch (err) {
+        if (cancelled) return;
+        if (err instanceof ApiError && err.status === 401) {
+          setUnauthorized(true);
+          setView(null);
+        }
+        setError(err instanceof Error ? err.message : "Falha ao carregar retorno KAAS.");
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+
+    void run();
+    return () => {
+      cancelled = true;
+    };
+  }, [documentId, reloadTick]);
+
+  const kasBody = useMemo(() => (view ? kasJsonBody(view) : null), [view]);
+
   const copy = async () => {
-    if (!result) return;
-    const proxy = result.body as { body?: unknown } | null;
-    const kasBody = proxy && typeof proxy === "object" && "body" in proxy ? proxy.body : result.body;
+    if (kasBody == null) return;
     await navigator.clipboard.writeText(JSON.stringify(kasBody, null, 2));
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
 
-  if (!result) {
+  if (loading && !view) {
+    return (
+      <div className="card">
+        <p style={{ margin: 0, color: "var(--color-text-secondary)" }}>Carregando GET /v1/documents…</p>
+      </div>
+    );
+  }
+
+  if (!view) {
     return (
       <>
         <div className="page-header">
           <div>
             <h2>Retorno KAAS</h2>
-            <div className="subtitle">Nenhuma execução nesta sessão</div>
+            <div className="subtitle">Fonte: Postgres via API .NET — sem sessionStorage</div>
           </div>
-          <Link href="/" className="btn btn--primary">Enviar documento</Link>
+          <Link href="/envio" className="btn btn--primary">Enviar documento</Link>
         </div>
+        {unauthorized && (
+          <JwtTokenForm
+            roleLabel="operador"
+            hint="GET /v1/documents exige Bearer. Cole JWT operador (sessionStorage bbf.access_token)."
+            onSaved={async () => {
+              setUnauthorized(false);
+              setReloadTick((n) => n + 1);
+            }}
+          />
+        )}
+        {error && (
+          <div className="banner banner--err" role="alert">✕ {error}</div>
+        )}
         <div className="card">
           <p style={{ margin: 0, color: "var(--color-text-secondary)" }}>
-            Faça upload no Dashboard. O JSON da jornada <code>testes-firmas-e-poderes</code> aparece aqui.
+            Nenhum documento na API. Envie em <Link href="/envio">/envio</Link>. Worker grava result em <code>kas_runs</code>; esta tela lê status + canônico.
           </p>
         </div>
       </>
     );
   }
-
-  const proxy = result.body as {
-    ok?: boolean;
-    kasStatus?: number;
-    durationMs?: number;
-    fileName?: string;
-    fileSize?: number;
-    error?: string;
-    detail?: string;
-    body?: unknown;
-  } | null;
-  const kasBody = proxy && typeof proxy === "object" && "body" in proxy ? proxy.body : result.body;
-  const kasStatus = typeof proxy?.kasStatus === "number" ? proxy.kasStatus : result.httpStatus;
-  const durationMs = typeof proxy?.durationMs === "number" ? proxy.durationMs : null;
 
   return (
     <>
@@ -89,43 +144,69 @@ export default function KasResultPage() {
         <div>
           <h2>Retorno KAAS</h2>
           <div className="subtitle">
-            Jornada <code>testes-firmas-e-poderes</code> · modo <code>sync</code>
+            Worker <code>action: result</code> · <code>{view.documentId}</code> · {view.status}
           </div>
         </div>
         <div style={{ display: "flex", gap: 8 }}>
-          <Link href="/" className="btn btn--ghost">← Dashboard</Link>
-          <button type="button" className="btn btn--secondary" onClick={copy}>
+          <Link href="/envio" className="btn btn--ghost">← Envio</Link>
+          <Link href={`/documents/${view.documentId}`} className="btn btn--ghost">Documento</Link>
+          <button type="button" className="btn btn--secondary" onClick={() => void copy()}>
             {copied ? "Copiado" : "Copiar JSON"}
           </button>
         </div>
       </div>
 
-      <div className={`banner ${result.ok ? "banner--ok" : "banner--err"}`} role="status">
-        {result.ok ? "✓" : "✕"} HTTP {kasStatus}
-        {result.ok ? " — jornada concluída (sync)" : ` — ${proxy?.error || proxy?.detail || "a API retornou erro"}`}
+      {unauthorized && (
+        <JwtTokenForm
+          roleLabel="operador"
+          hint="GET /v1/documents exige Bearer. Cole JWT operador (sessionStorage bbf.access_token)."
+          onSaved={async () => {
+            setUnauthorized(false);
+            setReloadTick((n) => n + 1);
+          }}
+        />
+      )}
+
+      {error && (
+        <div className="banner banner--err" role="alert">✕ {error}</div>
+      )}
+
+      <div className={`banner ${view.ok ? "banner--ok" : "banner--err"}`} role="status">
+        {view.ok ? "✓" : "✕"} {view.status}
+        {view.polling
+          ? " — worker ainda processa (poll)"
+          : view.ok
+            ? " — result persistido pelo worker"
+            : " — pipeline falhou"}
       </div>
 
       <div className="grid-3">
         <div className="metric-card">
           <div className="metric-label">Arquivo</div>
-          <div className="metric-value" style={{ fontSize: 16 }}>{result.fileName}</div>
+          <div className="metric-value" style={{ fontSize: 16 }}>{view.fileName}</div>
         </div>
-        <div className="metric-card" style={{ borderLeftColor: result.ok ? "var(--color-status-approved)" : "var(--color-status-rejected)" }}>
-          <div className="metric-label">Status KAAS</div>
-          <div className="metric-value">{kasStatus}</div>
+        <div className="metric-card" style={{ borderLeftColor: view.ok ? "var(--color-status-approved)" : "var(--color-status-rejected)" }}>
+          <div className="metric-label">Status</div>
+          <div className="metric-value" style={{ fontSize: 16 }}>{view.status}</div>
         </div>
         <div className="metric-card" style={{ borderLeftColor: "var(--color-status-info)" }}>
-          <div className="metric-label">{durationMs != null ? "Duração" : "Quando"}</div>
+          <div className="metric-label">Quando</div>
           <div className="metric-value" style={{ fontSize: 16 }}>
-            {durationMs != null ? `${(durationMs / 1000).toFixed(1)}s` : new Date(result.at).toLocaleString("pt-BR")}
+            {new Date(view.uploadedAt).toLocaleString("pt-BR")}
           </div>
         </div>
       </div>
 
+      {view.correlationId && (
+        <p style={{ fontSize: 13, color: "var(--color-text-muted)" }}>
+          <code>correlationId</code>: {view.correlationId}
+        </p>
+      )}
+
       <div className="card">
-        <h3>Corpo da resposta</h3>
+        <h3>Corpo (canônico / status)</h3>
         {kasBody && typeof kasBody === "object" ? (
-          <JsonNode value={kasBody} />
+          <JsonTree value={kasBody} />
         ) : (
           <pre>{kasBody == null ? "(vazio)" : String(kasBody)}</pre>
         )}
@@ -136,5 +217,13 @@ export default function KasResultPage() {
         <pre>{JSON.stringify(kasBody, null, 2)}</pre>
       </div>
     </>
+  );
+}
+
+export default function KasResultPage() {
+  return (
+    <Suspense fallback={<div className="card">Carregando retorno KAAS…</div>}>
+      <KasResultWorkspace />
+    </Suspense>
   );
 }

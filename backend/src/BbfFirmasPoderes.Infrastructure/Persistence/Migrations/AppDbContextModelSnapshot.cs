@@ -92,6 +92,28 @@ namespace BbfFirmasPoderes.Infrastructure.Persistence.Migrations
                             DocumentId = "doc_001",
                             OccurredAt = new DateTimeOffset(new DateTime(2026, 4, 29, 14, 22, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
                             Type = "document.uploaded"
+                        },
+                        new
+                        {
+                            EventId = "ev_0008",
+                            Actor = "system",
+                            CorrelationId = "corr_d4e5f6",
+                            DecisionId = "dec_002",
+                            Details = "Decisão REPROVADO (sócio inativo)",
+                            DocumentId = "doc_004",
+                            OccurredAt = new DateTimeOffset(new DateTime(2026, 4, 28, 17, 33, 14, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Type = "decision.evaluated"
+                        },
+                        new
+                        {
+                            EventId = "ev_0009",
+                            Actor = "system",
+                            CorrelationId = "corr_g7h8i9",
+                            DecisionId = "dec_003",
+                            Details = "Decisão MANUAL (baixa confiança)",
+                            DocumentId = "doc_003",
+                            OccurredAt = new DateTimeOffset(new DateTime(2026, 4, 29, 9, 51, 8, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Type = "decision.evaluated"
                         });
                 });
 
@@ -199,6 +221,40 @@ namespace BbfFirmasPoderes.Infrastructure.Persistence.Migrations
                             Operacao = "Movimentação financeira — R$ 500.000",
                             SignatariosSolicitados = new[] { "João da Silva (Diretor)", "Maria Souza (Procuradora)" },
                             Status = "APROVADO",
+                            VersionAiModel = "gemini-1.5-pro",
+                            VersionAiPrompt = "leitura-contrato-social@2.1.0",
+                            VersionCanonical = "1.0.0",
+                            VersionRules = "1.2.0"
+                        },
+                        new
+                        {
+                            DecisionId = "dec_002",
+                            Cnpj = "11.222.333/0001-44",
+                            DocumentId = "doc_004",
+                            EvaluatedAt = new DateTimeOffset(new DateTime(2026, 4, 28, 17, 33, 14, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            EvidenciasJson = "[{\"type\":\"fonte_oficial\",\"fonte\":\"Junta Comercial SP\",\"detalhe\":\"Status ATIVO=false desde 2025-09-12\"},{\"type\":\"documento\",\"trace\":{\"page\":2,\"offsetStart\":320,\"offsetEnd\":480,\"snippet\":\"...procuração com validade até 30/08/2025...\"},\"detalhe\":\"Cláusula 3 da Procuração\"}]",
+                            LatencyMs = 1542,
+                            Motivos = new[] { "Sócio Carlos Pereira consta como INATIVO na Junta Comercial desde 2025-09-12 (Regra RN01 v1.2.0).", "Procuração apresentada está revogada (validTo 2025-08-30)." },
+                            Operacao = "Contratação de crédito — R$ 200.000",
+                            SignatariosSolicitados = new[] { "Carlos Pereira (Procurador)" },
+                            Status = "REPROVADO",
+                            VersionAiModel = "gemini-1.5-pro",
+                            VersionAiPrompt = "leitura-contrato-social@2.1.0",
+                            VersionCanonical = "1.0.0",
+                            VersionRules = "1.2.0"
+                        },
+                        new
+                        {
+                            DecisionId = "dec_003",
+                            Cnpj = "55.666.777/0001-22",
+                            DocumentId = "doc_003",
+                            EvaluatedAt = new DateTimeOffset(new DateTime(2026, 4, 29, 9, 51, 8, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            EvidenciasJson = "[{\"type\":\"documento\",\"trace\":{\"page\":3,\"offsetStart\":800,\"offsetEnd\":1100,\"snippet\":\"...os procuradores poderão, em conjunto ou isoladamente conforme deliberação...\"},\"detalhe\":\"Cláusula ambígua — modo de assinatura não determinístico\"}]",
+                            LatencyMs = 1102,
+                            Motivos = new[] { "Confiança da extração NER abaixo do threshold (66% < 75%) — Regra de Threshold v1.0.0.", "Cláusula de poderes ambígua na página 3 — recomenda revisão jurídica." },
+                            Operacao = "Abertura de conta",
+                            SignatariosSolicitados = new[] { "Pedro Henrique (Procurador)" },
+                            Status = "MANUAL",
                             VersionAiModel = "gemini-1.5-pro",
                             VersionAiPrompt = "leitura-contrato-social@2.1.0",
                             VersionCanonical = "1.0.0",
@@ -325,6 +381,40 @@ namespace BbfFirmasPoderes.Infrastructure.Persistence.Migrations
                             Status = "decidido",
                             TipoSocietario = "LTDA",
                             UploadedAt = new DateTimeOffset(new DateTime(2026, 4, 29, 14, 22, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            UploadedBy = "ana.silva@bbf.com.br"
+                        },
+                        new
+                        {
+                            DocumentId = "doc_004",
+                            Cnpj = "11.222.333/0001-44",
+                            ConfiancaIagen = 0.93m,
+                            ConfiancaNer = 0.95m,
+                            ConfiancaOcr = 0.96m,
+                            CorrelationId = "corr_d4e5f6",
+                            FileHash = "d4e5...0f1a",
+                            FileName = "contrato-delta.pdf",
+                            Paginas = 6,
+                            RazaoSocial = "Delta EIRELI",
+                            Status = "decidido",
+                            TipoSocietario = "EIRELI",
+                            UploadedAt = new DateTimeOffset(new DateTime(2026, 4, 28, 17, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            UploadedBy = "joao.t@bbf.com.br"
+                        },
+                        new
+                        {
+                            DocumentId = "doc_003",
+                            Cnpj = "55.666.777/0001-22",
+                            ConfiancaIagen = 0.71m,
+                            ConfiancaNer = 0.66m,
+                            ConfiancaOcr = 0.78m,
+                            CorrelationId = "corr_g7h8i9",
+                            FileHash = "c1d2...8e9f",
+                            FileName = "procuracao-gama.pdf",
+                            Paginas = 4,
+                            RazaoSocial = "Gama Investimentos LTDA",
+                            Status = "revisao_humana",
+                            TipoSocietario = "LTDA",
+                            UploadedAt = new DateTimeOffset(new DateTime(2026, 4, 29, 9, 48, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
                             UploadedBy = "ana.silva@bbf.com.br"
                         });
                 });
@@ -494,17 +584,48 @@ namespace BbfFirmasPoderes.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(64)")
                         .HasColumnName("document_id");
 
+                    b.Property<string>("Documento")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("documento");
+
+                    b.Property<DateOnly?>("MandateEnd")
+                        .HasColumnType("date")
+                        .HasColumnName("mandate_end");
+
+                    b.Property<DateOnly?>("MandateStart")
+                        .HasColumnType("date")
+                        .HasColumnName("mandate_start");
+
                     b.Property<string>("Nome")
                         .IsRequired()
                         .HasMaxLength(256)
                         .HasColumnType("character varying(256)")
                         .HasColumnName("nome");
 
+                    b.Property<string>("PersonType")
+                        .IsRequired()
+                        .HasMaxLength(8)
+                        .HasColumnType("character varying(8)")
+                        .HasColumnName("person_type");
+
                     b.Property<string>("Qualificacao")
                         .IsRequired()
                         .HasMaxLength(128)
                         .HasColumnType("character varying(128)")
                         .HasColumnName("qualificacao");
+
+                    b.Property<decimal?>("Quotas")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("quotas");
+
+                    b.Property<string>("Rg")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("rg");
 
                     b.Property<string>("Status")
                         .IsRequired()
@@ -529,8 +650,11 @@ namespace BbfFirmasPoderes.Infrastructure.Persistence.Migrations
                             Cargo = "Diretor",
                             Cpf = "111.222.***-44",
                             DocumentId = "doc_001",
+                            Documento = "",
                             Nome = "João da Silva",
+                            PersonType = "",
                             Qualificacao = "Sócio-administrador",
+                            Rg = "",
                             Status = "ativo"
                         },
                         new
@@ -539,8 +663,11 @@ namespace BbfFirmasPoderes.Infrastructure.Persistence.Migrations
                             Cargo = "Procuradora",
                             Cpf = "222.333.***-55",
                             DocumentId = "doc_001",
+                            Documento = "",
                             Nome = "Maria Souza",
+                            PersonType = "",
                             Qualificacao = "Sócia",
+                            Rg = "",
                             Status = "ativo"
                         },
                         new
@@ -549,9 +676,38 @@ namespace BbfFirmasPoderes.Infrastructure.Persistence.Migrations
                             Cargo = "Conselheiro",
                             Cpf = "333.444.***-66",
                             DocumentId = "doc_001",
+                            Documento = "",
                             Nome = "Carlos Pereira",
+                            PersonType = "",
                             Qualificacao = "Sócio",
+                            Rg = "",
                             Status = "inativo"
+                        },
+                        new
+                        {
+                            PersonId = "p4",
+                            Cargo = "Procurador",
+                            Cpf = "333.444.***-66",
+                            DocumentId = "doc_004",
+                            Documento = "",
+                            Nome = "Carlos Pereira",
+                            PersonType = "",
+                            Qualificacao = "Titular",
+                            Rg = "",
+                            Status = "inativo"
+                        },
+                        new
+                        {
+                            PersonId = "p5",
+                            Cargo = "Procurador",
+                            Cpf = "444.555.***-77",
+                            DocumentId = "doc_003",
+                            Documento = "",
+                            Nome = "Pedro Henrique",
+                            PersonType = "",
+                            Qualificacao = "Procurador",
+                            Rg = "",
+                            Status = "ativo"
                         });
                 });
 
@@ -685,6 +841,23 @@ namespace BbfFirmasPoderes.Infrastructure.Persistence.Migrations
                             SourcePage = 4,
                             SourceSnippet = "...acima desse valor, exigir-se-á assinatura conjunta de Diretor e Procurador...",
                             VigenciaFrom = new DateOnly(2024, 1, 1)
+                        },
+                        new
+                        {
+                            PowerId = "pw_delta_1",
+                            DocumentId = "doc_004",
+                            LimiteCurrency = "BRL",
+                            LimiteExpression = "até R$ 200.000,00",
+                            LimiteValue = 200000m,
+                            ModoAssinaturaTipo = "isolada",
+                            Operacao = "Contratação de crédito",
+                            Pessoa = "Titular",
+                            SourceOffsetEnd = 480,
+                            SourceOffsetStart = 320,
+                            SourcePage = 2,
+                            SourceSnippet = "...procuração com validade até 30/08/2025...",
+                            VigenciaFrom = new DateOnly(2024, 1, 1),
+                            VigenciaTo = new DateOnly(2025, 8, 30)
                         });
                 });
 
