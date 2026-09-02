@@ -68,6 +68,7 @@ services:
       Documents__StorageRoot: /data/docs
       # Interpola .env (gitignorado). Vazio = ingest live falha (demo seed continua).
       Kas__ApiKey: ${Kas__ApiKey:-}
+      Kas__MultipartFileField: ${Kas__MultipartFileField:-document_url}
     volumes:
       - bbf_docs:/data/docs
     depends_on:

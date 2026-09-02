@@ -14,4 +14,10 @@ public sealed class KasOptions
     public int TimeoutSeconds { get; set; } = KasDefaults.TimeoutSeconds;
 
     public int PollIntervalSeconds { get; set; } = 5;
+
+    /// <summary>
+    /// Campo multipart alinhado a <c>schema.properties.document_url</c> (<c>x-kas-upload</c>).
+    /// A jornada mapeia o valor em <c>$.payload.document_url</c>.
+    /// </summary>
+    public string MultipartFileField { get; set; } = "document_url";
 }

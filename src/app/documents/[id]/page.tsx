@@ -22,6 +22,9 @@ export default function DocumentDetailPage() {
   return (
     <DocumentQueryView query={query}>
       {(doc, polling) => {
+        const validations = Array.isArray(doc.analysis.validations) ? doc.analysis.validations : [];
+        const risks = Array.isArray(doc.analysis.risks) ? doc.analysis.risks : [];
+        const pendencies = Array.isArray(doc.analysis.pendencies) ? doc.analysis.pendencies : [];
         const poderesVigentes = doc.poderes.filter((p) => {
           const from = p.vigencia.validFrom.slice(0, 10);
           const to = p.vigencia.validTo?.slice(0, 10);
@@ -85,6 +88,33 @@ export default function DocumentDetailPage() {
                 </Link>
               </div>
             </div>
+
+            {doc.score != null && (
+              <div className="card">
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 24, alignItems: "flex-start", flexWrap: "wrap" }}>
+                  <div>
+                    <div style={{ fontSize: 12, color: "var(--color-text-secondary)", textTransform: "uppercase" }}>
+                      Prontidão documental para crédito
+                    </div>
+                    <div style={{ fontSize: 36, fontWeight: 800 }}>{doc.score}<span style={{ fontSize: 16 }}>/100</span></div>
+                    <span className={`badge ${doc.recommendation === "aprovado" ? "badge--ok" : doc.recommendation === "reprovado" ? "badge--err" : "badge--warn"}`}>
+                      {doc.recommendation ?? doc.scoreClassification ?? "—"}
+                    </span>
+                  </div>
+                  <div style={{ flex: "1 1 420px" }}>
+                    <strong>Justificativa</strong>
+                    <p style={{ margin: "6px 0 12px", color: "var(--color-text-secondary)" }}>
+                      {doc.scoreJustification ?? "Justificativa indisponível."}
+                    </p>
+                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                      <span className="badge badge--neutral">{validations.length} validações</span>
+                      <span className={risks.length ? "badge badge--err" : "badge badge--ok"}>{risks.length} riscos</span>
+                      <span className={pendencies.length ? "badge badge--warn" : "badge badge--ok"}>{pendencies.length} pendências</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {doc.socios.length > 0 && (
               <div className="card">

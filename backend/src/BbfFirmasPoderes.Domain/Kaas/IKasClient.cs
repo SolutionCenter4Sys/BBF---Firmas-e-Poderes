@@ -5,5 +5,10 @@ namespace BbfFirmasPoderes.Domain.Kaas;
 /// </summary>
 public interface IKasClient
 {
-    Task<KasCallResult> PostAsync(object envelope, CancellationToken cancellationToken = default);
+    Task<KasCallResult> PostDocumentAsync(
+        Stream document,
+        string fileName,
+        string contentType,
+        string fileField,
+        CancellationToken cancellationToken = default);
 }

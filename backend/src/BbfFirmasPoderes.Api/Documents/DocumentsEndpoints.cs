@@ -1,3 +1,4 @@
+using System.Text.Json;
 using BbfFirmasPoderes.Domain.Auth;
 using BbfFirmasPoderes.Domain.Correlation;
 using BbfFirmasPoderes.Domain.Enums;
@@ -78,7 +79,7 @@ public static class DocumentsEndpoints
                     StatusCodes.Status415UnsupportedMediaType,
                     "Unsupported Media Type",
                     "https://tools.ietf.org/html/rfc9110#section-15.5.16",
-                    "Tipo de arquivo não suportado. Envie PDF ou imagem."),
+                    "Tipo de arquivo não suportado. Envie PDF, DOCX, DOC, ODT ou RTF."),
                 IngestOutcome.InvalidSize invalid => Problem(
                     http,
                     StatusCodes.Status422UnprocessableEntity,
@@ -248,7 +249,19 @@ public static class DocumentsEndpoints
                 new CanonicalSourceTraceDto(p.SourcePage, p.SourceOffsetStart, p.SourceOffsetEnd, p.SourceSnippet)))
             .ToArray();
 
-        return Results.Json(new CanonicalDocumentResponse(doc.DocumentId, doc.Cnpj, pessoas, poderes));
+        var analysis = JsonSerializer.Deserialize<JsonElement>(
+            string.IsNullOrWhiteSpace(doc.AnalysisJson) ? "{}" : doc.AnalysisJson);
+
+        return Results.Json(new CanonicalDocumentResponse(
+            doc.DocumentId,
+            doc.Cnpj,
+            pessoas,
+            poderes,
+            analysis,
+            doc.CreditReadinessScore,
+            doc.CreditReadinessClassification,
+            doc.CreditReadinessRecommendation,
+            doc.CreditReadinessJustification));
     }
 
     private static IResult Problem(HttpContext http, int status, string title, string type, string detail)
@@ -302,7 +315,12 @@ public sealed record CanonicalDocumentResponse(
     string DocumentId,
     string Cnpj,
     IReadOnlyList<CanonicalPersonDto> Pessoas,
-    IReadOnlyList<CanonicalPowerDto> Poderes);
+    IReadOnlyList<CanonicalPowerDto> Poderes,
+    JsonElement Analysis,
+    int? Score,
+    string? ScoreClassification,
+    string? Recommendation,
+    string? ScoreJustification);
 
 public sealed record CanonicalPersonDto(
     string PersonId,

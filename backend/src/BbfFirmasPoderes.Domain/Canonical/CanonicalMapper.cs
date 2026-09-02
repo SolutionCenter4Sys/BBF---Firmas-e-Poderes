@@ -37,6 +37,7 @@ public static class CanonicalMapper
 
     public static CanonicalMapping TryMap(JsonElement root, string documentId)
     {
+        var normalized = KaasAnalysisNormalizer.Normalize(root);
         if (!TryFindCanonicalObject(root, depth: 0, out var source))
             return CanonicalMapping.Unstructured;
 
@@ -78,7 +79,9 @@ public static class CanonicalMapper
             Powers: powers,
             Cnpj: cnpj,
             RazaoSocial: razao,
-            TipoSocietario: tipo);
+            TipoSocietario: tipo,
+            AnalysisJson: normalized.AnalysisJson,
+            CreditReadiness: normalized.Score);
     }
 
     /// <summary>Normaliza LTDA / S.A. / EIRELI a partir do campo explícito ou do sufixo da razão social.</summary>

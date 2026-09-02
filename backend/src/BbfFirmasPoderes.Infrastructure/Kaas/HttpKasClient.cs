@@ -15,7 +15,12 @@ public sealed class HttpKasClient(HttpClient http, IOptions<KasOptions> options)
         DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
     };
 
-    public async Task<KasCallResult> PostAsync(object envelope, CancellationToken cancellationToken = default)
+    public async Task<KasCallResult> PostDocumentAsync(
+        Stream document,
+        string fileName,
+        string contentType,
+        string fileField,
+        CancellationToken cancellationToken = default)
     {
         var kas = options.Value;
         if (string.IsNullOrWhiteSpace(kas.ApiKey))
@@ -25,11 +30,19 @@ public sealed class HttpKasClient(HttpClient http, IOptions<KasOptions> options)
         }
 
         var url = string.IsNullOrWhiteSpace(kas.RunUrl) ? KasDefaults.DefaultRunUrl : kas.RunUrl;
-        var json = JsonSerializer.Serialize(envelope, JsonOptions);
 
         using var request = new HttpRequestMessage(HttpMethod.Post, url);
         request.Headers.TryAddWithoutValidation(KasDefaults.ApiKeyHeader, kas.ApiKey);
-        request.Content = new StringContent(json, Encoding.UTF8, "application/json");
+        using var multipart = new MultipartFormDataContent();
+        using var payload = new StringContent("{}", Encoding.UTF8, "application/json");
+        multipart.Add(new StringContent(KasDefaults.ModeSync), "mode");
+        multipart.Add(payload, "payload");
+
+        var file = new StreamContent(document);
+        file.Headers.ContentType = MediaTypeHeaderValue.Parse(
+            string.IsNullOrWhiteSpace(contentType) ? "application/octet-stream" : contentType);
+        multipart.Add(file, fileField, fileName);
+        request.Content = multipart;
         request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
 
         var started = Stopwatch.StartNew();

@@ -8,6 +8,7 @@ using BbfFirmasPoderes.Domain.Kaas;
 using BbfFirmasPoderes.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace BbfFirmasPoderes.Infrastructure.Kaas;
 
@@ -16,6 +17,7 @@ public sealed class OutboxKaasProcessor(
     IKasClient kas,
     IDocumentBlobStore blobs,
     IAuditContext audit,
+    IOptions<KasOptions> kasOptions,
     ILogger<OutboxKaasProcessor> logger)
 {
     public async Task<bool> ProcessNextAsync(CancellationToken cancellationToken = default)
@@ -57,13 +59,16 @@ public sealed class OutboxKaasProcessor(
                 throw new FileNotFoundException("Documento sem storage_path.", document.DocumentId);
 
             var bytes = await blobs.ReadAllBytesAsync(document.StoragePath, cancellationToken);
-            var documentUrl = KasDataUrl.FromBytes(bytes, document.ContentType);
 
             document.Status = DocStatus.processando_iagen;
             await db.SaveChangesAsync(cancellationToken);
 
-            var call = await kas.PostAsync(
-                new KasSyncEnvelope { Payload = new KasSyncPayload { DocumentUrl = documentUrl } },
+            await using var stream = new MemoryStream(bytes, writable: false);
+            var call = await kas.PostDocumentAsync(
+                stream,
+                document.FileName,
+                document.ContentType ?? "application/octet-stream",
+                kasOptions.Value.MultipartFileField,
                 cancellationToken);
 
             var executionId = KasExecutionIds.Extract(call.Parsed)
@@ -139,7 +144,7 @@ public sealed class OutboxKaasProcessor(
                     HttpStatus = 0,
                     Ok = false,
                     OccurredAt = DateTimeOffset.UtcNow,
-                    PayloadJson = JsonSerializer.Serialize(new { error = ex.GetType().Name, message = ex.Message })
+                    PayloadJson = JsonSerializer.Serialize(new { message = failure })
                 });
             }
 
@@ -209,6 +214,12 @@ public sealed class OutboxKaasProcessor(
         if (!string.IsNullOrWhiteSpace(mapping.TipoSocietario))
             document.TipoSocietario = mapping.TipoSocietario;
 
+        document.AnalysisJson = mapping.AnalysisJson;
+        document.CreditReadinessScore = mapping.CreditReadiness?.Score;
+        document.CreditReadinessClassification = mapping.CreditReadiness?.Classification;
+        document.CreditReadinessRecommendation = mapping.CreditReadiness?.Recommendation;
+        document.CreditReadinessJustification = mapping.CreditReadiness?.Justification;
+
         if (document.Status is not DocStatus.revisao_humana and not DocStatus.falha)
             document.Status = DocStatus.canonico_pronto;
 
@@ -253,8 +264,15 @@ public sealed class OutboxKaasProcessor(
         {
             foreach (var name in names)
             {
-                if (el.TryGetProperty(name, out var found) && found.TryGetInt32(out value))
+                if (!el.TryGetProperty(name, out var found))
+                    continue;
+                if (found.ValueKind == JsonValueKind.Number && found.TryGetInt32(out value))
                     return true;
+                if (found.ValueKind == JsonValueKind.String
+                    && int.TryParse(found.GetString(), out value))
+                {
+                    return true;
+                }
             }
 
             foreach (var prop in el.EnumerateObject())

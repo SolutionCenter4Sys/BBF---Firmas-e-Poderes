@@ -38,6 +38,11 @@ export interface CanonicalDto {
   cnpj: string;
   pessoas: Person[];
   poderes: Power[];
+  analysis: Record<string, unknown>;
+  score: number | null;
+  scoreClassification: string | null;
+  recommendation: string | null;
+  scoreJustification: string | null;
 }
 
 export interface DocumentDetail {
@@ -53,6 +58,11 @@ export interface DocumentDetail {
   lastError: string | null;
   socios: Person[];
   poderes: Power[];
+  analysis: Record<string, unknown>;
+  score: number | null;
+  scoreClassification: string | null;
+  recommendation: string | null;
+  scoreJustification: string | null;
 }
 
 export function isDocStatus(value: string): value is DocStatus {
@@ -203,11 +213,19 @@ export function parseCanonical(body: unknown): CanonicalDto | null {
   if (!documentId) return null;
   const pessoasRaw = Array.isArray(row.pessoas) ? row.pessoas : [];
   const poderesRaw = Array.isArray(row.poderes) ? row.poderes : [];
+  const analysis = row.analysis && typeof row.analysis === "object" && !Array.isArray(row.analysis)
+    ? row.analysis as Record<string, unknown>
+    : {};
   return {
     documentId,
     cnpj: str(row.cnpj),
     pessoas: pessoasRaw.map(parsePerson).filter((p): p is Person => p !== null),
-    poderes: poderesRaw.map(parsePower).filter((p): p is Power => p !== null)
+    poderes: poderesRaw.map(parsePower).filter((p): p is Power => p !== null),
+    analysis,
+    score: typeof row.score === "number" && Number.isFinite(row.score) ? row.score : null,
+    scoreClassification: optionalStr(row.scoreClassification),
+    recommendation: optionalStr(row.recommendation),
+    scoreJustification: optionalStr(row.scoreJustification)
   };
 }
 
@@ -224,7 +242,12 @@ export function mergeDetail(status: DocumentStatusDto, canonical: CanonicalDto |
     confianca: status.confianca,
     lastError: status.lastError,
     socios: canonical?.pessoas ?? [],
-    poderes: canonical?.poderes ?? []
+    poderes: canonical?.poderes ?? [],
+    analysis: canonical?.analysis ?? {},
+    score: canonical?.score ?? null,
+    scoreClassification: canonical?.scoreClassification ?? null,
+    recommendation: canonical?.recommendation ?? null,
+    scoreJustification: canonical?.scoreJustification ?? null
   };
 }
 

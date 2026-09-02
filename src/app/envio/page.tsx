@@ -11,13 +11,32 @@ import { newCorrelationId } from "@/lib/kas-ids";
 import { kasJsonBody, loadKasRunView, resultAlreadyPosted, type KasRunView } from "@/lib/kas-result";
 
 const MAX_UPLOAD_BYTES = 50 * 1024 * 1024;
-const ACCEPT_ATTR = "application/pdf,image/png,image/jpeg,image/webp,image/tiff";
+const ACCEPT_ATTR = [
+  "application/pdf",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "application/msword",
+  "application/vnd.oasis.opendocument.text",
+  "application/rtf",
+  "text/rtf",
+  ".pdf",
+  ".docx",
+  ".doc",
+  ".odt",
+  ".rtf"
+].join(",");
 
 type Stage = "idle" | "file" | "api" | "worker" | "json" | "done" | "error";
 
 function isAllowedFile(file: File): boolean {
-  if (file.type === "application/pdf" || file.type.startsWith("image/")) return true;
-  return /\.(pdf|png|jpe?g|webp|tiff?)$/i.test(file.name);
+  if (
+    file.type === "application/pdf" ||
+    file.type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
+    file.type === "application/msword" ||
+    file.type === "application/vnd.oasis.opendocument.text" ||
+    file.type === "application/rtf" ||
+    file.type === "text/rtf"
+  ) return true;
+  return /\.(pdf|docx?|odt|rtf)$/i.test(file.name);
 }
 
 export default function EnvioKaasPage() {
@@ -43,7 +62,7 @@ export default function EnvioKaasPage() {
       return;
     }
     if (!isAllowedFile(next)) {
-      setNotice({ kind: "err", text: "Formato inválido. Envie PDF ou imagem." });
+      setNotice({ kind: "err", text: "Formato inválido. Envie PDF, DOCX, DOC, ODT ou RTF." });
       return;
     }
     setFile(next);
@@ -119,7 +138,12 @@ export default function EnvioKaasPage() {
         }
         if (next.status === "falha") {
           setStage("error");
-          setNotice({ kind: "err", text: "Pipeline falhou. Verifique o contrato e envie novamente." });
+          setNotice({
+            kind: "err",
+            text: next.statusDto.lastError
+              ? `Pipeline falhou: ${next.statusDto.lastError}`
+              : "Pipeline falhou. Verifique o contrato e envie novamente."
+          });
           return;
         }
         setStage(resultAlreadyPosted(next.status) ? "done" : "json");
@@ -262,7 +286,7 @@ export default function EnvioKaasPage() {
             <>
               📄 Arraste o documento ou clique para escolher
               <div style={{ fontSize: 12, color: "var(--color-text-secondary)", marginTop: 8 }}>
-                PDF ou imagem · até 50 MB
+                PDF, DOCX, DOC, ODT ou RTF · até 50 MB
               </div>
             </>
           )}

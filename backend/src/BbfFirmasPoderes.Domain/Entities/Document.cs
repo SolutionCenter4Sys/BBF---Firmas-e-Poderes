@@ -20,6 +20,11 @@ public class Document
     public decimal ConfiancaIagen { get; set; }
     public decimal ConfiancaNer { get; set; }
     public string? CorrelationId { get; set; }
+    public string AnalysisJson { get; set; } = "{}";
+    public int? CreditReadinessScore { get; set; }
+    public string? CreditReadinessClassification { get; set; }
+    public string? CreditReadinessRecommendation { get; set; }
+    public string? CreditReadinessJustification { get; set; }
 
     public ICollection<Person> Socios { get; set; } = new List<Person>();
     public ICollection<Power> Poderes { get; set; } = new List<Power>();

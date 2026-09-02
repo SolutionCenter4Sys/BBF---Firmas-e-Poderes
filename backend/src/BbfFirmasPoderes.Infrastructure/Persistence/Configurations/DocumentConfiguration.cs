@@ -32,6 +32,14 @@ internal sealed class DocumentConfiguration : IEntityTypeConfiguration<Document>
         builder.Property(e => e.ConfiancaIagen).HasColumnName("confianca_iagen").HasColumnType("numeric(5,4)");
         builder.Property(e => e.ConfiancaNer).HasColumnName("confianca_ner").HasColumnType("numeric(5,4)");
         builder.Property(e => e.CorrelationId).HasColumnName("correlation_id").HasMaxLength(64);
+        builder.Property(e => e.AnalysisJson).HasColumnName("analysis_json").HasColumnType("jsonb").IsRequired();
+        builder.Property(e => e.CreditReadinessScore).HasColumnName("credit_readiness_score");
+        builder.Property(e => e.CreditReadinessClassification)
+            .HasColumnName("credit_readiness_classification").HasMaxLength(16);
+        builder.Property(e => e.CreditReadinessRecommendation)
+            .HasColumnName("credit_readiness_recommendation").HasMaxLength(32);
+        builder.Property(e => e.CreditReadinessJustification)
+            .HasColumnName("credit_readiness_justification").HasMaxLength(2048);
 
         builder.HasIndex(e => e.Cnpj).HasDatabaseName("ix_documents_cnpj");
         builder.HasIndex(e => e.Status).HasDatabaseName("ix_documents_status");

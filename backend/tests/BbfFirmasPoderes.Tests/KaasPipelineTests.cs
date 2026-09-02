@@ -81,15 +81,23 @@ public sealed class KaasPipelineTests : IDisposable
         Assert.Contains(FakeApiKey, apiKeyHeader.Value);
         Assert.DoesNotContain("railway.app", entries[0].RequestMessage.AbsoluteUrl, StringComparison.OrdinalIgnoreCase);
 
-        using var body = JsonDocument.Parse(entries[0].RequestMessage.Body ?? "{}");
-        Assert.Equal("sync", body.RootElement.GetProperty("mode").GetString());
-        Assert.False(body.RootElement.TryGetProperty("document_url", out _), "document_url na raiz → KAAS 400");
-        var payload = body.RootElement.GetProperty("payload");
-        Assert.Equal(JsonValueKind.Object, payload.ValueKind);
-        Assert.False(payload.TryGetProperty("action", out _));
-        Assert.False(payload.TryGetProperty("correlationId", out _));
-        var documentUrl = payload.GetProperty("document_url").GetString();
-        Assert.StartsWith("data:application/pdf;base64,", documentUrl);
+        var contentType = headers.FirstOrDefault(h =>
+            h.Key.Equals("Content-Type", StringComparison.OrdinalIgnoreCase));
+        Assert.Contains(
+            "multipart/form-data",
+            string.Join(";", contentType.Value),
+            StringComparison.OrdinalIgnoreCase);
+
+        var rawBody = entries[0].RequestMessage.Body ?? string.Empty;
+        Assert.Contains("name=mode", rawBody, StringComparison.Ordinal);
+        Assert.Contains("sync", rawBody, StringComparison.Ordinal);
+        Assert.Contains("name=payload", rawBody, StringComparison.Ordinal);
+        Assert.Contains("application/json", rawBody, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("name=document_url", rawBody, StringComparison.Ordinal);
+        Assert.DoesNotContain("payload.document_url", rawBody, StringComparison.Ordinal);
+        Assert.Contains("filename=contrato-social.pdf", rawBody, StringComparison.Ordinal);
+        Assert.Contains("application/pdf", rawBody, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("base64", rawBody, StringComparison.OrdinalIgnoreCase);
         Assert.Equal(correlationId, (await db.Documents.FindAsync(documentId))!.CorrelationId);
 
         Assert.Empty(await db.People.Where(p => p.DocumentId == documentId).ToListAsync());
@@ -130,6 +138,13 @@ public sealed class KaasPipelineTests : IDisposable
         Assert.Equal("12.345.678/0001-90", doc.Cnpj);
         Assert.Equal("ACME Indústrias LTDA", doc.RazaoSocial);
         Assert.Equal("LTDA", doc.TipoSocietario);
+        Assert.NotNull(doc.CreditReadinessScore);
+        Assert.InRange(doc.CreditReadinessScore.Value, 0, 100);
+        Assert.False(string.IsNullOrWhiteSpace(doc.CreditReadinessClassification));
+        Assert.False(string.IsNullOrWhiteSpace(doc.CreditReadinessRecommendation));
+        Assert.False(string.IsNullOrWhiteSpace(doc.CreditReadinessJustification));
+        Assert.Contains("\"score\"", doc.AnalysisJson);
+        Assert.Contains("\"score_justification\"", doc.AnalysisJson);
 
         var people = await db.People.Where(p => p.DocumentId == documentId).OrderBy(p => p.PersonId).ToListAsync();
         var powers = await db.Powers.Where(p => p.DocumentId == documentId).OrderBy(p => p.PowerId).ToListAsync();

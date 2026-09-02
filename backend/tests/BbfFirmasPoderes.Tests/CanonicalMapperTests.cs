@@ -169,6 +169,11 @@ public class CanonicalMapperTests
         Assert.Equal("Administração geral da sociedade", mapping.Powers[0].Operacao);
         Assert.Equal(2, mapping.Powers[0].SourcePage);
         Assert.Contains("administração da sociedade", mapping.Powers[0].SourceSnippet);
+        Assert.NotNull(mapping.CreditReadiness);
+        Assert.InRange(mapping.CreditReadiness!.Score, 0, 100);
+        Assert.False(string.IsNullOrWhiteSpace(mapping.CreditReadiness.Justification));
+        Assert.Contains("\"people\"", mapping.AnalysisJson);
+        Assert.Contains("\"powers\"", mapping.AnalysisJson);
     }
 
     [Theory]

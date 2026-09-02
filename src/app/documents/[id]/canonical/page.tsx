@@ -66,7 +66,12 @@ export default function CanonicalPage() {
           documentId: doc.documentId,
           cnpj: doc.cnpj,
           pessoas: doc.socios,
-          poderes: doc.poderes
+          poderes: doc.poderes,
+          analysis: doc.analysis,
+          score: doc.score,
+          scoreClassification: doc.scoreClassification,
+          recommendation: doc.recommendation,
+          scoreJustification: doc.scoreJustification
         };
 
         return (
@@ -116,6 +121,17 @@ export default function CanonicalPage() {
                         <TreeNode label="fileName" value={doc.fileName} />
                         <TreeNode label="status" value={doc.status} />
                         <TreeNode label="schemaVersion" value="canonical-powers/v1.0.0" />
+                      </TreeNode>
+
+                      <TreeNode
+                        label="Score de prontidão"
+                        value={doc.score == null ? "—" : `${doc.score}/100`}
+                        badge={doc.recommendation ?? undefined}
+                        badgeClass={doc.recommendation === "aprovado" ? "badge--ok" : doc.recommendation === "reprovado" ? "badge--err" : "badge--warn"}
+                      >
+                        <TreeNode label="classification" value={doc.scoreClassification ?? "—"} />
+                        <TreeNode label="recommendation" value={doc.recommendation ?? "—"} />
+                        <TreeNode label="justification" value={doc.scoreJustification ?? "—"} />
                       </TreeNode>
 
                       <TreeNode label="👥 pessoas" badge={`${doc.socios.length}`} badgeClass="badge--neutral">

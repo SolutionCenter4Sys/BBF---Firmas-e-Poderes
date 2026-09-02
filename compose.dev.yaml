@@ -1,6 +1,10 @@
+# Mesmo project name do compose.yaml: db e volume bbf_pgdata compartilhados.
+name: bbf-firmas
+
 services:
   db:
     image: postgres:16
+    container_name: bbf-db
     ports:
       - "5432:5432"
     environment:

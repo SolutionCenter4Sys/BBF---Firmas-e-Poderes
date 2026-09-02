@@ -150,7 +150,7 @@ Upload **assíncrono**. Blob no volume `data/docs/{documentId}` (não bytea). Ou
 | `GET /v1/documents` | 200 lista | 401, 403 |
 | `GET /v1/documents/{id}/status` | 200 `{ documentId, status, ... }` | 401, 403, 404 |
 
-MIME: PDF / PNG / JPEG / WebP / TIFF. Teto: `Documents:MaxUploadBytes` (50 MB). Tamanho acima do teto → **422** (OS WF-06; mock também lista 422).
+MIME: PDF / DOCX / DOC / ODT / RTF (imagens legadas continuam aceitas pela API). Teto: `Documents:MaxUploadBytes` (50 MB). Tamanho acima do teto → **422** (OS WF-06; mock também lista 422).
 
 ```powershell
 # mint JWT operador (Development)
@@ -162,16 +162,21 @@ curl -i http://localhost:8080/v1/documents/<documentId>/status -H "Authorization
 
 ## Worker KAAS (WF-07)
 
-Consome `outbox_messages` (`document.uploaded`, `processed_at` nulo). Dois POST na jornada `testes-firmas-e-poderes`: `action=ingest` (com `document_url`) e `action=result` (mesmo `correlationId`). JSON bruto em `kas_runs`. Status: `processando_ocr` → payload (ingest ok sem status → `processando_iagen`; result ok → `canonico_pronto`; erro → `falha`).
+Consome `outbox_messages` (`document.uploaded`, `processed_at` nulo). Faz um POST síncrono `multipart/form-data` na jornada `testes-firmas-e-poderes`: parte `mode=sync`, parte `payload` JSON e documento no caminho de schema configurado em `Kas__MultipartFileField`. JSON bruto em `kas_runs`. Status: `processando_ocr` → `processando_iagen` → resultado canônico/revisão/falha.
 
 ```powershell
 $env:Kas__ApiKey = "<chave-somente-worker>"
 $env:Kas__RunUrl = "https://kaas-core-dev.up.railway.app/kas/triggers/journeys/testes-firmas-e-poderes/run"
 $env:Kas__TimeoutSeconds = "300"
+$env:Kas__MultipartFileField = "document_url"
 dotnet run --project backend/src/BbfFirmasPoderes.Worker
 ```
 
 Proibido `KAS_API_KEY` / `X-Flow-Api-Key` no Next.js. Rotas `/api/kas/*` devolvem **410**. Testes usam WireMock (chave fake `test-kaas-key-not-real`).
+
+Schema versionado em `docs/kaas/testes-firmas-e-poderes.json`: `document_url` com `x-kas-upload` e PDF/DOCX/DOC/ODT/RTF. POST `multipart/form-data` com `mode=sync`, `payload` JSON `{}` e arquivo no campo `document_url`. O DAG lê `$.payload.document_url`. Se o KAAS responder `not an uploadable schema path`, o campo não está marcado no schema publicado.
+
+O canônico persiste análise normalizada sem texto OCR integral: documento, empresa, pessoas, poderes, assinaturas, validações, riscos e pendências. `GET /v1/documents/{id}/canonical` inclui `score` (0–100), `scoreClassification`, `recommendation`, `scoreJustification` e `analysis`. Score mede prontidão documental para decisão de crédito; não é score de risco de crédito.
 
 ## Decisão (WF-09)
 

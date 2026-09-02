@@ -7,6 +7,11 @@ public static class UploadRules
     public static readonly HashSet<string> AllowedContentTypes = new(StringComparer.OrdinalIgnoreCase)
     {
         "application/pdf",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "application/msword",
+        "application/vnd.oasis.opendocument.text",
+        "application/rtf",
+        "text/rtf",
         "image/png",
         "image/jpeg",
         "image/jpg",
@@ -17,7 +22,8 @@ public static class UploadRules
 
     public static readonly HashSet<string> AllowedExtensions = new(StringComparer.OrdinalIgnoreCase)
     {
-        ".pdf", ".png", ".jpg", ".jpeg", ".webp", ".tif", ".tiff"
+        ".pdf", ".docx", ".doc", ".odt", ".rtf",
+        ".png", ".jpg", ".jpeg", ".webp", ".tif", ".tiff"
     };
 
     /// <summary>
@@ -42,6 +48,15 @@ public static class UploadRules
         return ext switch
         {
             ".pdf" => header.StartsWith("%PDF"u8),
+            ".docx" or ".odt" => header.Length >= 4
+                && header[0] == 0x50 && header[1] == 0x4B
+                && header[2] == 0x03 && header[3] == 0x04,
+            ".doc" => header.Length >= 8
+                && header[0] == 0xD0 && header[1] == 0xCF
+                && header[2] == 0x11 && header[3] == 0xE0
+                && header[4] == 0xA1 && header[5] == 0xB1
+                && header[6] == 0x1A && header[7] == 0xE1,
+            ".rtf" => header.StartsWith("{\\rtf"u8),
             ".png" => header.Length >= 8
                 && header[0] == 0x89 && header[1] == 0x50 && header[2] == 0x4E && header[3] == 0x47
                 && header[4] == 0x0D && header[5] == 0x0A && header[6] == 0x1A && header[7] == 0x0A,

@@ -12,7 +12,10 @@ public sealed record CanonicalMapping(
     IReadOnlyList<Power> Powers,
     string? Cnpj,
     string? RazaoSocial,
-    string? TipoSocietario)
+    string? TipoSocietario,
+    string AnalysisJson,
+    CreditReadinessScore? CreditReadiness)
 {
-    public static CanonicalMapping Unstructured { get; } = new(false, [], [], null, null, null);
+    public static CanonicalMapping Unstructured { get; } =
+        new(false, [], [], null, null, null, "{}", null);
 }

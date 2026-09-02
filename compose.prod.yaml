@@ -51,6 +51,7 @@ services:
       Documents__StorageRoot: /data/docs
       Kas__ApiKey: ${Kas__ApiKey}
       Kas__RunUrl: ${Kas__RunUrl}
+      Kas__MultipartFileField: ${Kas__MultipartFileField:-document_url}
     volumes:
       - bbf_docs_prod:/data/docs
     depends_on:

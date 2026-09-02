@@ -171,6 +171,9 @@ public class DocumentsApiTests : IClassFixture<DocumentsApiFactory>
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Equal("doc_001", json.GetProperty("documentId").GetString());
         Assert.Equal("12.345.678/0001-90", json.GetProperty("cnpj").GetString());
+        Assert.Equal(JsonValueKind.Object, json.GetProperty("analysis").ValueKind);
+        Assert.Equal(JsonValueKind.Null, json.GetProperty("score").ValueKind);
+        Assert.Equal(JsonValueKind.Null, json.GetProperty("scoreJustification").ValueKind);
 
         var pessoas = json.GetProperty("pessoas").EnumerateArray().ToArray();
         Assert.Equal(3, pessoas.Length);
