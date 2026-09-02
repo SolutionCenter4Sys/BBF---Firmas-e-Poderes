@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Net;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
@@ -9,12 +10,6 @@ namespace BbfFirmasPoderes.Infrastructure.Kaas;
 
 public sealed class HttpKasClient(HttpClient http, IOptions<KasOptions> options) : IKasClient
 {
-    private static readonly JsonSerializerOptions JsonOptions = new()
-    {
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-        DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
-    };
-
     public async Task<KasCallResult> PostDocumentAsync(
         Stream document,
         string fileName,
@@ -32,6 +27,8 @@ public sealed class HttpKasClient(HttpClient http, IOptions<KasOptions> options)
         var url = string.IsNullOrWhiteSpace(kas.RunUrl) ? KasDefaults.DefaultRunUrl : kas.RunUrl;
 
         using var request = new HttpRequestMessage(HttpMethod.Post, url);
+        request.Version = HttpVersion.Version20;
+        request.VersionPolicy = HttpVersionPolicy.RequestVersionOrLower;
         request.Headers.TryAddWithoutValidation(KasDefaults.ApiKeyHeader, kas.ApiKey);
         using var multipart = new MultipartFormDataContent();
         using var payload = new StringContent("{}", Encoding.UTF8, "application/json");

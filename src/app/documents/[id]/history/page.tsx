@@ -22,7 +22,7 @@ const tipoLabels = {
 
 export default function HistoryPage() {
   const params = useParams<{ id: string }>();
-  const query = useDocumentDetail(routeDocumentId(params.id));
+  const { query } = useDocumentDetail(routeDocumentId(params.id));
 
   return (
     <DocumentQueryView query={query}>
@@ -75,7 +75,6 @@ export default function HistoryPage() {
                           <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
                             <button className="btn btn--ghost" style={{ padding: "4px 12px", fontSize: 12 }} type="button">Download</button>
                             <button className="btn btn--ghost" style={{ padding: "4px 12px", fontSize: 12 }} type="button">Comparar com versão anterior</button>
-                            {v.tipo === "canonical" && <button className="btn btn--ghost" style={{ padding: "4px 12px", fontSize: 12 }} type="button">Usar como base para replay</button>}
                           </div>
                         </div>
                       </div>

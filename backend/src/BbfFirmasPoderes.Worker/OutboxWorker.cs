@@ -23,7 +23,7 @@ public sealed class OutboxWorker(
         if (string.IsNullOrWhiteSpace(options.Value.ApiKey))
         {
             logger.LogWarning(
-                "Kas__ApiKey vazio. Defina a chave só neste Worker. Rotas Next /api/kas estão deprecadas.");
+                "Kas__ApiKey vazio. Defina a chave só neste Worker.");
         }
 
         while (!stoppingToken.IsCancellationRequested)

@@ -167,12 +167,12 @@ Consome `outbox_messages` (`document.uploaded`, `processed_at` nulo). Faz um POS
 ```powershell
 $env:Kas__ApiKey = "<chave-somente-worker>"
 $env:Kas__RunUrl = "https://kaas-core-dev.up.railway.app/kas/triggers/journeys/testes-firmas-e-poderes/run"
-$env:Kas__TimeoutSeconds = "300"
+$env:Kas__TimeoutSeconds = "600"
 $env:Kas__MultipartFileField = "document_url"
 dotnet run --project backend/src/BbfFirmasPoderes.Worker
 ```
 
-Proibido `KAS_API_KEY` / `X-Flow-Api-Key` no Next.js. Rotas `/api/kas/*` devolvem **410**. Testes usam WireMock (chave fake `test-kaas-key-not-real`).
+Proibido `KAS_API_KEY` / `X-Flow-Api-Key` no Next.js. A jornada KAAS corre só no Worker. Testes usam WireMock (chave fake `test-kaas-key-not-real`).
 
 Schema versionado em `docs/kaas/testes-firmas-e-poderes.json`: `document_url` com `x-kas-upload` e PDF/DOCX/DOC/ODT/RTF. POST `multipart/form-data` com `mode=sync`, `payload` JSON `{}` e arquivo no campo `document_url`. O DAG lê `$.payload.document_url`. Se o KAAS responder `not an uploadable schema path`, o campo não está marcado no schema publicado.
 

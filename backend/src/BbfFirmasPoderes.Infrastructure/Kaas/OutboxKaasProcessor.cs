@@ -20,10 +20,18 @@ public sealed class OutboxKaasProcessor(
     IOptions<KasOptions> kasOptions,
     ILogger<OutboxKaasProcessor> logger)
 {
+    private const int AuditDetailsMax = 2048;
+    private const int ClassificationMax = 16;
+    private const int RecommendationMax = 32;
+    private const int JustificationMax = 2048;
+
     public async Task<bool> ProcessNextAsync(CancellationToken cancellationToken = default)
     {
+        var now = DateTimeOffset.UtcNow;
         var message = await db.OutboxMessages
-            .Where(o => o.ProcessedAt == null && o.Type == OutboxTypes.DocumentUploaded)
+            .Where(o => o.ProcessedAt == null
+                && o.Type == OutboxTypes.DocumentUploaded
+                && (o.NextAttemptAt == null || o.NextAttemptAt <= now))
             .OrderBy(o => o.CreatedAt)
             .FirstOrDefaultAsync(cancellationToken);
 
@@ -50,6 +58,7 @@ public sealed class OutboxKaasProcessor(
             return;
         }
 
+        KasCallResult? lastCall = null;
         try
         {
             document.Status = DocStatus.processando_ocr;
@@ -70,6 +79,7 @@ public sealed class OutboxKaasProcessor(
                 document.ContentType ?? "application/octet-stream",
                 kasOptions.Value.MultipartFileField,
                 cancellationToken);
+            lastCall = call;
 
             var executionId = KasExecutionIds.Extract(call.Parsed)
                 ?? KasExecutionIds.ExtractFromJson(call.RawBody);
@@ -100,6 +110,7 @@ public sealed class OutboxKaasProcessor(
 
             document.Status = KasStatusMapper.FromSync(call.RawBody, call.Ok);
             ApplyExecutionHints(document, call.RawBody);
+            await db.SaveChangesAsync(cancellationToken);
 
             if (call.Ok)
             {
@@ -108,7 +119,24 @@ public sealed class OutboxKaasProcessor(
                     message.CorrelationId,
                     document.DocumentId,
                     $"OCR/jornada concluído para {document.FileName}");
-                await ApplyCanonicalAsync(document, call.RawBody, cancellationToken);
+                try
+                {
+                    await ApplyCanonicalAsync(document, call.RawBody, cancellationToken);
+                }
+                catch (Exception canonicalEx)
+                {
+                    logger.LogError(
+                        canonicalEx,
+                        "Canônico falhou após HTTP 200 para {DocumentId}. Payload já está em kas_runs.",
+                        document.DocumentId);
+                    if (document.Status != DocStatus.falha)
+                        document.Status = DocStatus.revisao_humana;
+                    AppendAudit(
+                        AuditEventTypes.KasResult,
+                        message.CorrelationId,
+                        document.DocumentId,
+                        Clamp($"Canônico falhou após KAAS 200: {canonicalEx.Message}", AuditDetailsMax));
+                }
             }
             else
             {
@@ -119,36 +147,124 @@ public sealed class OutboxKaasProcessor(
             }
 
             message.ProcessedAt = DateTimeOffset.UtcNow;
+            message.LastError = errorText;
+            message.NextAttemptAt = null;
             await db.SaveChangesAsync(cancellationToken);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
         }
         catch (Exception ex)
         {
             logger.LogError(ex, "Pipeline KAAS falhou para {DocumentId}", document.DocumentId);
-            document.Status = DocStatus.falha;
-            message.ProcessedAt = DateTimeOffset.UtcNow;
-            var failure = KasErrorText.FromException(ex);
-            AppendAudit(
-                AuditEventTypes.KasResult,
-                message.CorrelationId,
-                document.DocumentId,
-                failure);
-            if (!db.ChangeTracker.Entries<KasRun>().Any(e => e.Entity.DocumentId == document.DocumentId))
+            if (TransportError.IsTransient(ex, lastCall)
+                && message.AttemptCount + 1 < TransportError.MaxAttempts)
             {
-                db.KasRuns.Add(new KasRun
+                await ScheduleRetryAsync(message, document.DocumentId, ex, cancellationToken);
+                return;
+            }
+
+            await MarkFailedAsync(message, document.DocumentId, lastCall, ex, cancellationToken);
+        }
+    }
+
+    private async Task ScheduleRetryAsync(
+        OutboxMessage message,
+        string documentId,
+        Exception ex,
+        CancellationToken cancellationToken)
+    {
+        var failure = KasErrorText.FromException(ex);
+        db.ChangeTracker.Clear();
+
+        var outbox = await db.OutboxMessages
+            .FirstOrDefaultAsync(o => o.OutboxId == message.OutboxId, cancellationToken);
+        if (outbox is null)
+            return;
+
+        outbox.AttemptCount += 1;
+        outbox.LastError = Clamp(failure, 1024);
+        outbox.NextAttemptAt = DateTimeOffset.UtcNow + TransportError.DelayAfter(outbox.AttemptCount);
+        outbox.ProcessedAt = null;
+
+        var document = await db.Documents
+            .FirstOrDefaultAsync(d => d.DocumentId == documentId, cancellationToken);
+        if (document is not null && document.Status == DocStatus.falha)
+            document.Status = DocStatus.processando_iagen;
+
+        AppendAudit(
+            AuditEventTypes.KasResult,
+            message.CorrelationId,
+            documentId,
+            $"Tentativa {outbox.AttemptCount}/{TransportError.MaxAttempts} em {outbox.NextAttemptAt:u}: {failure}");
+
+        await db.SaveChangesAsync(cancellationToken);
+        logger.LogWarning(
+            "Reagendou {DocumentId} tentativa {Attempt} para {When}",
+            documentId,
+            outbox.AttemptCount,
+            outbox.NextAttemptAt);
+    }
+
+    /// <summary>
+    /// Registra a falha a partir de um contexto limpo: as entidades pendentes que causaram o erro
+    /// ficam descartadas, senão o próprio SaveChanges do catch falha e o outbox nunca é concluído.
+    /// </summary>
+    private async Task MarkFailedAsync(
+        OutboxMessage message,
+        string documentId,
+        KasCallResult? call,
+        Exception ex,
+        CancellationToken cancellationToken)
+    {
+        var failure = KasErrorText.FromException(ex);
+        db.ChangeTracker.Clear();
+
+        try
+        {
+            var document = await db.Documents
+                .FirstOrDefaultAsync(d => d.DocumentId == documentId, cancellationToken);
+            if (document is not null)
+                document.Status = DocStatus.falha;
+
+            var outbox = await db.OutboxMessages
+                .FirstOrDefaultAsync(o => o.OutboxId == message.OutboxId, cancellationToken);
+            if (outbox is not null)
+            {
+                outbox.ProcessedAt = DateTimeOffset.UtcNow;
+                outbox.LastError = Clamp(failure, 1024);
+                outbox.NextAttemptAt = null;
+                outbox.AttemptCount = Math.Max(outbox.AttemptCount, 1);
+            }
+
+            AppendAudit(AuditEventTypes.KasResult, message.CorrelationId, documentId, failure);
+
+            db.KasRuns.Add(call is null
+                ? new KasRun
                 {
                     KasRunId = Guid.NewGuid(),
                     CorrelationId = message.CorrelationId,
-                    DocumentId = document.DocumentId,
+                    DocumentId = documentId,
                     Action = KasRunAction.ingest,
-                    FileName = document.FileName,
+                    FileName = document?.FileName ?? string.Empty,
                     HttpStatus = 0,
                     Ok = false,
                     OccurredAt = DateTimeOffset.UtcNow,
                     PayloadJson = JsonSerializer.Serialize(new { message = failure })
-                });
-            }
+                }
+                : ToKasRun(
+                    document ?? new Document { DocumentId = documentId, FileName = string.Empty },
+                    message.CorrelationId,
+                    KasRunAction.ingest,
+                    call,
+                    KasExecutionIds.Extract(call.Parsed) ?? KasExecutionIds.ExtractFromJson(call.RawBody)));
 
             await db.SaveChangesAsync(cancellationToken);
+        }
+        catch (Exception persistEx)
+        {
+            logger.LogError(persistEx, "Não foi possível registrar a falha de {DocumentId}", documentId);
         }
     }
 
@@ -216,9 +332,9 @@ public sealed class OutboxKaasProcessor(
 
         document.AnalysisJson = mapping.AnalysisJson;
         document.CreditReadinessScore = mapping.CreditReadiness?.Score;
-        document.CreditReadinessClassification = mapping.CreditReadiness?.Classification;
-        document.CreditReadinessRecommendation = mapping.CreditReadiness?.Recommendation;
-        document.CreditReadinessJustification = mapping.CreditReadiness?.Justification;
+        document.CreditReadinessClassification = ClampOrNull(mapping.CreditReadiness?.Classification, ClassificationMax);
+        document.CreditReadinessRecommendation = ClampOrNull(mapping.CreditReadiness?.Recommendation, RecommendationMax);
+        document.CreditReadinessJustification = ClampOrNull(mapping.CreditReadiness?.Justification, JustificationMax);
 
         if (document.Status is not DocStatus.revisao_humana and not DocStatus.falha)
             document.Status = DocStatus.canonico_pronto;
@@ -236,8 +352,19 @@ public sealed class OutboxKaasProcessor(
             type,
             correlationId,
             audit.Actor,
-            details,
+            Clamp(details, AuditDetailsMax),
             documentId));
+    }
+
+    private static string Clamp(string? value, int max)
+        => ClampOrNull(value, max) ?? string.Empty;
+
+    private static string? ClampOrNull(string? value, int max)
+    {
+        if (string.IsNullOrEmpty(value))
+            return value;
+
+        return value.Length <= max ? value : value[..max];
     }
 
     private static void ApplyExecutionHints(Document document, string json)

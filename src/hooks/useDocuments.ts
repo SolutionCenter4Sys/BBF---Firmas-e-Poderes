@@ -15,6 +15,7 @@ export interface DocumentListItem {
   razaoSocial?: string;
   tipoSocietario?: string;
   confianca?: { ocr: number; iagen: number; ner: number };
+  lastError?: string | null;
 }
 
 const DOC_STATUSES: readonly DocStatus[] = [
@@ -28,6 +29,12 @@ const DOC_STATUSES: readonly DocStatus[] = [
   "revisao_humana",
   "falha"
 ];
+
+const STATUS_POLL_MS = 2500;
+
+export function isProcessingStatus(status: DocStatus): boolean {
+  return status === "pendente" || status.startsWith("processando_");
+}
 
 function isDocStatus(value: string): value is DocStatus {
   return (DOC_STATUSES as readonly string[]).includes(value);
@@ -69,7 +76,8 @@ function normalizeListItem(raw: unknown): DocumentListItem | null {
     tipoSocietario: typeof row.tipoSocietario === "string" && row.tipoSocietario.trim()
       ? row.tipoSocietario
       : undefined,
-    confianca: parseConfidence(row.confianca)
+    confianca: parseConfidence(row.confianca),
+    lastError: typeof row.lastError === "string" && row.lastError.trim() ? row.lastError : null
   };
 }
 
@@ -111,6 +119,25 @@ export async function uploadDocument(
   return { documentId, status, correlationId: returnedCorr };
 }
 
+export async function reprocessDocument(
+  documentId: string
+): Promise<{ documentId: string; status: string; correlationId: string | null }> {
+  const response = await apiFetch(`/v1/documents/${encodeURIComponent(documentId)}/reprocess`, {
+    method: "POST"
+  });
+  const body = await readBody(response);
+  if (response.status !== 202) {
+    throw new ApiError(response.status, body, parseProblem(body, `POST /v1/documents/{id}/reprocess → ${response.status}`));
+  }
+  const payload = body && typeof body === "object"
+    ? (body as { documentId?: unknown; status?: unknown; correlationId?: unknown })
+    : {};
+  const id = typeof payload.documentId === "string" ? payload.documentId : documentId;
+  const status = typeof payload.status === "string" ? payload.status : "pendente";
+  const returnedCorr = typeof payload.correlationId === "string" ? payload.correlationId : null;
+  return { documentId: id, status, correlationId: returnedCorr };
+}
+
 export function useDocuments(status?: DocStatus) {
   const [items, setItems] = useState<DocumentListItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -118,8 +145,8 @@ export function useDocuments(status?: DocStatus) {
   const [unauthorized, setUnauthorized] = useState(false);
   const [forbidden, setForbidden] = useState(false);
 
-  const refresh = useCallback(async () => {
-    setLoading(true);
+  const refresh = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true);
     setError(null);
     try {
       const docs = await listDocuments(status);
@@ -144,13 +171,23 @@ export function useDocuments(status?: DocStatus) {
       const message = err instanceof Error ? err.message : "Falha ao listar documentos.";
       setError(message);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, [status]);
 
   useEffect(() => {
     void refresh();
   }, [refresh]);
+
+  useEffect(() => {
+    if (!items.some((item) => isProcessingStatus(item.status))) return;
+
+    const timer = window.setTimeout(() => {
+      void refresh(true);
+    }, STATUS_POLL_MS);
+
+    return () => window.clearTimeout(timer);
+  }, [items, refresh]);
 
   useEffect(() => {
     const onUnauthorized = () => {

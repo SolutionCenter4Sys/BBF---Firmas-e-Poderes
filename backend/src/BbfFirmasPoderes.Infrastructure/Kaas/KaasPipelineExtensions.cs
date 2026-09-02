@@ -15,13 +15,22 @@ public static class KaasPipelineExtensions
     public static IServiceCollection AddKaasPipeline(this IServiceCollection services, IConfiguration configuration)
     {
         services.Configure<KasOptions>(configuration.GetSection(KasOptions.SectionName));
-        services.AddHttpClient<IKasClient, HttpKasClient>((sp, client) =>
-        {
-            var timeout = sp.GetRequiredService<IOptions<KasOptions>>().Value.TimeoutSeconds;
-            if (timeout <= 0)
-                timeout = KasDefaults.TimeoutSeconds;
-            client.Timeout = TimeSpan.FromSeconds(timeout);
-        });
+        services
+            .AddHttpClient<IKasClient, HttpKasClient>((sp, client) =>
+            {
+                var timeout = sp.GetRequiredService<IOptions<KasOptions>>().Value.TimeoutSeconds;
+                if (timeout <= 0)
+                    timeout = KasDefaults.TimeoutSeconds;
+                client.Timeout = TimeSpan.FromSeconds(timeout);
+            })
+            .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler
+            {
+                ConnectTimeout = TimeSpan.FromSeconds(30),
+                KeepAlivePingDelay = TimeSpan.FromSeconds(30),
+                KeepAlivePingTimeout = TimeSpan.FromSeconds(30),
+                KeepAlivePingPolicy = HttpKeepAlivePingPolicy.Always,
+                PooledConnectionLifetime = TimeSpan.FromMinutes(15)
+            });
         services.AddScoped<OutboxKaasProcessor>();
         return services;
     }

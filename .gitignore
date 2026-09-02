@@ -24,6 +24,9 @@ backend/.idea/
 backend/src/BbfFirmasPoderes.Api/data/
 backend/src/BbfFirmasPoderes.Worker/data/
 
+# PIDs/logs BBF-UP.ps1
+.bbf-run/
+
 # local / agent noise
 graphify-out/
 **/__pycache__/

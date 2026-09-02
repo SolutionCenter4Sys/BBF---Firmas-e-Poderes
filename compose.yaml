@@ -69,6 +69,7 @@ services:
       # Interpola .env (gitignorado). Vazio = ingest live falha (demo seed continua).
       Kas__ApiKey: ${Kas__ApiKey:-}
       Kas__MultipartFileField: ${Kas__MultipartFileField:-document_url}
+      Kas__TimeoutSeconds: ${Kas__TimeoutSeconds:-600}
     volumes:
       - bbf_docs:/data/docs
     depends_on:

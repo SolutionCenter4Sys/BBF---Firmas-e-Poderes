@@ -89,6 +89,41 @@ public class CanonicalMapperTests
     }
 
     [Fact]
+    public void TryMap_LongKaasText_ClampsToColumnLimits()
+    {
+        var longText = new string('a', 900);
+        var longName = new string('b', 400);
+        var longId = new string('c', 120);
+        var longSnippet = new string('d', 4000);
+        var json = "{\"pessoas\":[{\"personId\":\"" + longId + "\",\"nome\":\"" + longName
+            + "\",\"cargo\":\"" + longText + "\",\"qualificacao\":\"" + longText
+            + "\",\"rg\":\"" + longText + "\"}],\"poderes\":[{\"powerId\":\"" + longId
+            + "\",\"pessoa\":\"" + longName + "\",\"text\":\"" + longText
+            + "\",\"restrictions\":[\"" + longText + "\"],\"limite\":{\"currency\":\"Reais\",\"value\":1},"
+            + "\"sourceTrace\":{\"page\":1,\"offsetStart\":0,\"offsetEnd\":1,\"snippet\":\"" + longSnippet + "\"}}]}";
+
+        var mapping = CanonicalMapper.TryMap(json, "doc_clamp");
+
+        Assert.True(mapping.Structured);
+
+        var person = Assert.Single(mapping.People);
+        Assert.True(person.PersonId.Length <= 64);
+        Assert.True(person.Nome.Length <= 256);
+        Assert.True(person.Cargo.Length <= 128);
+        Assert.True(person.Qualificacao.Length <= 128);
+        Assert.True(person.Rg.Length <= 64);
+
+        var power = Assert.Single(mapping.Powers);
+        Assert.True(power.PowerId.Length <= 64);
+        Assert.True(power.Pessoa.Length <= 256);
+        Assert.True(power.Operacao.Length <= 256);
+        Assert.True(power.LimiteExpression.Length <= 256);
+        Assert.True(power.LimiteCurrency.Length <= 3);
+        Assert.True(power.SourceSnippet.Length <= 1024);
+        Assert.EndsWith("…", power.Operacao);
+    }
+
+    [Fact]
     public void TryMap_UnstructuredPayload_IsNotStructured()
     {
         var mapping = CanonicalMapper.TryMap("""{"executionId":"exec_1","status":"canonico_pronto","ok":true}""", "doc_x");
@@ -218,5 +253,35 @@ public class CanonicalMapperTests
         Assert.Equal("S.A.", CanonicalMapper.InferTipoSocietario("Zeta Logística", "S.A."));
         Assert.Null(CanonicalMapper.InferTipoSocietario("Empresa Sem Tipo"));
         Assert.Null(CanonicalMapper.InferTipoSocietario(null, "$.payload.company.type"));
+    }
+
+    [Theory]
+    [InlineData("e emissão de notas fiscais cujos valores ultrapassem", false)]
+    [InlineData("emissão de notas fiscais", false)]
+    [InlineData("ACME Indústrias LTDA", true)]
+    [InlineData("Theo e Heloise", true)]
+    [InlineData("Th••••DA", true)]
+    public void LooksLikeLegalName_RejectsClauseFragments(string value, bool expected)
+    {
+        Assert.Equal(expected, CanonicalMapper.LooksLikeLegalName(value));
+    }
+
+    [Fact]
+    public void TryMap_ClauseAsRazaoSocial_IsIgnored()
+    {
+        var json =
+            """
+            {
+              "cnpj": "12.345.678/0001-90",
+              "razaoSocial": "e emissão de notas fiscais cujos valores ultrapassem R$ 10.000,00",
+              "pessoas": [{ "nome": "Sócio Teste", "cpf": "111.222.333-44", "status": "ativo" }],
+              "poderes": [{ "pessoa": "Diretor", "operacao": "Administração", "limite": { "currency": "BRL", "value": 1, "expression": "R$ 1" }, "modoAssinatura": { "tipo": "isolada" }, "sourceTrace": { "page": 1, "offsetStart": 0, "offsetEnd": 10, "snippet": "trecho" } }]
+            }
+            """;
+
+        var mapping = CanonicalMapper.TryMap(json, "doc_clause");
+
+        Assert.True(mapping.Structured);
+        Assert.Null(mapping.RazaoSocial);
     }
 }

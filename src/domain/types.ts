@@ -36,15 +36,6 @@ export interface Power {
   sourceTrace: { page: number; offsetStart: number; offsetEnd: number; snippet: string };
 }
 
-export interface CreditReadiness {
-  score: number;
-  classification: "alto" | "medio" | "baixo";
-  recommendation: "aprovado" | "revisao_manual" | "reprovado";
-  justification: string;
-  breakdown: Array<{ name: string; score: number; weight: number }>;
-  criticalBlockers: string[];
-}
-
 export interface Document {
   documentId: string;
   fileName: string;
@@ -59,7 +50,6 @@ export interface Document {
   confianca: { ocr: number; iagen: number; ner: number };
   socios: Person[];
   poderes: Power[];
-  creditReadiness?: CreditReadiness;
 }
 
 export interface DecisionEvidence {

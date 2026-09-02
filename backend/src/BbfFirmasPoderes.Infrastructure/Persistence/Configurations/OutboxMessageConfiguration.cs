@@ -16,6 +16,9 @@ internal sealed class OutboxMessageConfiguration : IEntityTypeConfiguration<Outb
         builder.Property(e => e.PayloadJson).HasColumnName("payload").HasColumnType("jsonb").IsRequired();
         builder.Property(e => e.CreatedAt).HasColumnName("created_at").HasColumnType("timestamptz").IsRequired();
         builder.Property(e => e.ProcessedAt).HasColumnName("processed_at").HasColumnType("timestamptz");
+        builder.Property(e => e.AttemptCount).HasColumnName("attempt_count").IsRequired();
+        builder.Property(e => e.NextAttemptAt).HasColumnName("next_attempt_at").HasColumnType("timestamptz");
+        builder.Property(e => e.LastError).HasColumnName("last_error").HasMaxLength(1024);
         builder.Property(e => e.DocumentId).HasColumnName("document_id").HasMaxLength(64);
         builder.Property(e => e.CorrelationId).HasColumnName("correlation_id").HasMaxLength(64).IsRequired();
 

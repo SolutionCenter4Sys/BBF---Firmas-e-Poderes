@@ -19,6 +19,11 @@ public static class DocumentsEndpoints
             .WithSummary("Upload de documento societário")
             .WithDescription("Aceita multipart campo file e enfileira no outbox. Não processa OCR. Resposta 202 com status pendente.");
 
+        group.MapPost("/{documentId}/reprocess", Reprocess)
+            .RequireAuthorization(Policies.DocumentsUpload)
+            .WithSummary("Reenviar documento ao KAAS")
+            .WithDescription("Cria nova mensagem de outbox. 409 se já houver processamento pendente.");
+
         group.MapGet("/", List)
             .RequireAuthorization(Policies.DocumentsRead)
             .WithSummary("Listar documentos")
@@ -142,6 +147,8 @@ public static class DocumentsEndpoints
         }
 
         var docs = await ingest.ListAsync(filter, cancellationToken);
+        var failedIds = docs.Where(d => d.Status == DocStatus.falha).Select(d => d.DocumentId).ToArray();
+        var errors = await ingest.GetLastKasErrorsAsync(failedIds, cancellationToken);
         var items = docs.Select(d => new DocumentListItem(
             d.DocumentId,
             d.FileName,
@@ -151,8 +158,43 @@ public static class DocumentsEndpoints
             EmptyToNull(d.Cnpj),
             EmptyToNull(d.RazaoSocial),
             EmptyToNull(d.TipoSocietario),
-            new ConfidenceDto(d.ConfiancaOcr, d.ConfiancaIagen, d.ConfiancaNer))).ToArray();
+            new ConfidenceDto(d.ConfiancaOcr, d.ConfiancaIagen, d.ConfiancaNer),
+            d.Status == DocStatus.falha && errors.TryGetValue(d.DocumentId, out var lastError)
+                ? lastError
+                : null)).ToArray();
         return Results.Json(items);
+    }
+
+    private static async Task<IResult> Reprocess(
+        HttpContext http,
+        string documentId,
+        DocumentIngestService ingest,
+        CancellationToken cancellationToken)
+    {
+        var actor = http.User.Identity?.Name ?? "anonymous";
+        var outcome = await ingest.RequeueAsync(documentId, actor, cancellationToken);
+        return outcome switch
+        {
+            RequeueOutcome.Accepted accepted => Results.Json(
+                new UploadAcceptedResponse(
+                    accepted.DocumentId,
+                    accepted.Status,
+                    accepted.CorrelationId,
+                    DateTimeOffset.UtcNow),
+                statusCode: StatusCodes.Status202Accepted),
+            RequeueOutcome.AlreadyQueued => Problem(
+                http,
+                StatusCodes.Status409Conflict,
+                "Conflict",
+                "https://tools.ietf.org/html/rfc9110#section-15.5.10",
+                "Documento já está na fila do KAAS."),
+            _ => Problem(
+                http,
+                StatusCodes.Status404NotFound,
+                "Not Found",
+                "https://tools.ietf.org/html/rfc9110#section-15.5.5",
+                "Documento não encontrado.")
+        };
     }
 
     private static bool TryParseDocStatus(string raw, out DocStatus status)
@@ -296,7 +338,8 @@ public sealed record DocumentListItem(
     string? Cnpj,
     string? RazaoSocial,
     string? TipoSocietario,
-    ConfidenceDto? Confianca);
+    ConfidenceDto? Confianca,
+    string? LastError);
 
 public sealed record ConfidenceDto(decimal Ocr, decimal Iagen, decimal Ner);
 

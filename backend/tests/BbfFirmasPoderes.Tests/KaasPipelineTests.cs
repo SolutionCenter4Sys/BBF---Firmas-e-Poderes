@@ -275,7 +275,7 @@ public sealed class KaasPipelineTests : IDisposable
     }
 
     [Fact]
-    public void Timeout_DefaultsTo300Seconds()
+    public void Timeout_AllowsFiveMinuteJourneyWithSafetyMargin()
     {
         using var provider = BuildProvider();
         var options = provider.GetRequiredService<Microsoft.Extensions.Options.IOptions<KasOptions>>().Value;
@@ -292,7 +292,7 @@ public sealed class KaasPipelineTests : IDisposable
                 ["Documents:StorageRoot"] = _storageRoot,
                 ["Kas:RunUrl"] = runUrl,
                 ["Kas:ApiKey"] = FakeApiKey,
-                ["Kas:TimeoutSeconds"] = "300",
+                ["Kas:TimeoutSeconds"] = "600",
                 ["Kas:PollIntervalSeconds"] = "1"
             })
             .Build();

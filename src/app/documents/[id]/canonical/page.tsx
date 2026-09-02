@@ -56,7 +56,7 @@ function TreeNode({ label, value, badge, badgeClass, defaultOpen = true, childre
 
 export default function CanonicalPage() {
   const params = useParams<{ id: string }>();
-  const query = useDocumentDetail(routeDocumentId(params.id));
+  const { query } = useDocumentDetail(routeDocumentId(params.id));
   const [view, setView] = useState<"tree" | "json" | "schema">("tree");
 
   return (

@@ -113,6 +113,37 @@ tr:hover td { background: var(--color-bg-emphasis); }
 .meter { background: var(--color-bg-emphasis); border-radius: var(--radius-pill); height: 8px; overflow: hidden; }
 .meter-fill { height: 100%; border-radius: var(--radius-pill); background: linear-gradient(90deg, var(--color-status-rejected), var(--color-status-manual), var(--color-status-approved)); }
 
+.kas-progress { min-width: 128px; max-width: 160px; }
+.kas-progress__track {
+  position: relative;
+  height: 8px;
+  overflow: hidden;
+  border-radius: var(--radius-pill);
+  background: var(--color-bg-emphasis);
+  border: 1px solid var(--color-border-default);
+}
+.kas-progress__fill {
+  height: 100%;
+  border-radius: var(--radius-pill);
+  background: var(--color-status-info);
+  transition: width 0.5s ease;
+}
+.kas-progress__sweep {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 42%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.75), transparent);
+  animation: kas-progress-sweep 1.15s ease-in-out infinite;
+}
+@keyframes kas-progress-sweep {
+  0% { transform: translateX(-130%); }
+  100% { transform: translateX(280%); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .kas-progress__sweep { animation: none; display: none; }
+}
+
 /* Code blocks */
 pre { background: #1a1a1a; color: #f0f0f0; padding: 16px; border-radius: var(--radius-md); overflow-x: auto; font-family: var(--font-family-mono); font-size: 13px; line-height: 1.5; }
 
@@ -120,6 +151,45 @@ pre { background: #1a1a1a; color: #f0f0f0; padding: 16px; border-radius: var(--r
 .dropzone { border: 2px dashed var(--color-border-strong); border-radius: var(--radius-lg); padding: var(--space-7); text-align: center; cursor: pointer; transition: all 120ms; background: var(--color-bg-emphasis); }
 .dropzone:hover, .dropzone:focus-visible { border-color: var(--color-brand-primary); background: white; }
 .dropzone--active { border-color: var(--color-brand-primary); background: white; box-shadow: 0 0 0 3px rgba(204, 9, 47, 0.12); }
+
+/* Confirmation dialog */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: grid;
+  place-items: center;
+  padding: var(--space-4);
+  background: rgba(26, 26, 26, 0.58);
+}
+.modal-card {
+  width: min(100%, 520px);
+  padding: var(--space-5);
+  border-radius: var(--radius-lg);
+  background: white;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.22);
+}
+.modal-card h3 { margin: 0 0 var(--space-2); }
+.modal-card p { margin: 0 0 var(--space-4); color: var(--color-text-secondary); }
+.modal-file {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-emphasis);
+  overflow-wrap: anywhere;
+}
+.modal-file span { font-size: 28px; }
+.modal-file div { display: grid; gap: 2px; }
+.modal-file small { color: var(--color-text-muted); }
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  margin-top: var(--space-5);
+}
 
 /* Grid layouts */
 .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4); }

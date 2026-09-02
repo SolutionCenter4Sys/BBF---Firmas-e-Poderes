@@ -1,4 +1,4 @@
-import type { DocStatus, DecisionStatus } from "@/lib/mocks";
+import type { DocStatus, DecisionStatus } from "@/domain";
 
 const docMap: Record<DocStatus, { label: string; className: string }> = {
   pendente: { label: "Pendente", className: "badge--neutral" },

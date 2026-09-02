@@ -95,5 +95,10 @@ export function useDocumentDetail(documentId: string | undefined) {
     return () => window.removeEventListener(AUTH_UNAUTHORIZED_EVENT, onUnauthorized);
   }, []);
 
-  return query;
+  const reload = useCallback(() => {
+    if (!documentId) return;
+    void load(documentId, false);
+  }, [documentId, load]);
+
+  return { query, reload };
 }

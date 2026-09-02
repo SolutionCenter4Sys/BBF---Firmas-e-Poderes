@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import { DocStatusBadge } from "@/components/StatusBadge";
 import PipelineStatusBar from "@/components/PipelineStatusBar";
+import { reprocessDocument } from "@/hooks/useDocuments";
 import { routeDocumentId } from "../_lib/document-api";
 import { DocumentQueryView } from "../_lib/DocumentQueryView";
 import { useDocumentDetail } from "../_lib/useDocumentDetail";
@@ -14,10 +15,12 @@ const fmtBRL = (n: number) => n.toLocaleString("pt-BR", { style: "currency", cur
 export default function DocumentDetailPage() {
   const params = useParams<{ id: string }>();
   const id = routeDocumentId(params.id);
-  const query = useDocumentDetail(id);
+  const { query, reload } = useDocumentDetail(id);
   const today = new Date().toISOString().substring(0, 10);
   const [vigenteEm, setVigenteEm] = useState<string>(today);
   const [copied, setCopied] = useState(false);
+  const [reprocessing, setReprocessing] = useState(false);
+  const [reprocessError, setReprocessError] = useState<string | null>(null);
 
   return (
     <DocumentQueryView query={query}>
@@ -55,7 +58,26 @@ export default function DocumentDetailPage() {
                 {doc.status === "decidido" && (
                   <Link href={`/decision?docId=${doc.documentId}`} className="btn btn--secondary">Ver decisão</Link>
                 )}
-                <button className="btn btn--primary" type="button">Replay</button>
+                {doc.status === "falha" && (
+                  <button
+                    className="btn btn--secondary"
+                    type="button"
+                    disabled={reprocessing}
+                    onClick={() => {
+                      if (!id || reprocessing) return;
+                      setReprocessing(true);
+                      setReprocessError(null);
+                      void reprocessDocument(id)
+                        .then(() => reload())
+                        .catch((err) => {
+                          setReprocessError(err instanceof Error ? err.message : "Falha ao reenviar.");
+                        })
+                        .finally(() => setReprocessing(false));
+                    }}
+                  >
+                    {reprocessing ? "Reenviando…" : "Reenviar"}
+                  </button>
+                )}
               </div>
             </div>
 
@@ -224,9 +246,10 @@ export default function DocumentDetailPage() {
                   <strong>O que fazer agora:</strong>
                   <ol style={{ margin: "4px 0 0 20px" }}>
                     <li>Verifique se o PDF está legível (sem proteção, resolução adequada).</li>
-                    <li>Faça o reupload pelo Dashboard.</li>
+                    <li>Use Reenviar (mesmo arquivo) ou envie outro PDF pelo Dashboard.</li>
                     <li>Se persistir, abra um chamado de suporte com o <code>correlationId</code> abaixo.</li>
                   </ol>
+                  {reprocessError ? <div style={{ margin: "8px 0" }}>{reprocessError}</div> : null}
                   <div style={{ marginTop: 8 }}>
                     <code style={{ background: "white", padding: "4px 8px", borderRadius: 4 }}>{doc.correlationId ?? "—"}</code>{" "}
                     <button className="btn btn--ghost" style={{ padding: "4px 12px", fontSize: 12 }} type="button" onClick={() => void copyCorr()} disabled={!doc.correlationId}>

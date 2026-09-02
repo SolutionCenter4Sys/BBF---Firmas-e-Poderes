@@ -17,8 +17,6 @@ const groups: NavGroup[] = [
     title: "Operação",
     items: [
       { href: "/", label: "Dashboard" },
-      { href: "/envio", label: "Enviar para o KAAS" },
-      { href: "/kas-result", label: "Retorno KAAS" },
       { href: "/review-queue", label: "Revisão humana" },
       { href: "/manual-queue", label: "Análise manual" }
     ]

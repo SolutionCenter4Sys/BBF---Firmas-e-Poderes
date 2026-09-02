@@ -1,4 +1,5 @@
 using BbfFirmasPoderes.Domain.Audit;
+using BbfFirmasPoderes.Domain.Correlation;
 using BbfFirmasPoderes.Domain.Documents;
 using BbfFirmasPoderes.Domain.Entities;
 using BbfFirmasPoderes.Domain.Enums;
@@ -24,6 +25,13 @@ public abstract record IngestOutcome
     public sealed record MissingFile : IngestOutcome;
     public sealed record UnsupportedType : IngestOutcome;
     public sealed record InvalidSize(string Detail) : IngestOutcome;
+}
+
+public abstract record RequeueOutcome
+{
+    public sealed record Accepted(string DocumentId, string Status, string CorrelationId) : RequeueOutcome;
+    public sealed record NotFound : RequeueOutcome;
+    public sealed record AlreadyQueued : RequeueOutcome;
 }
 
 public sealed class DocumentIngestService(
@@ -145,6 +153,73 @@ public sealed class DocumentIngestService(
         return query
             .OrderByDescending(d => d.UploadedAt)
             .ToListAsync(cancellationToken);
+    }
+
+    public async Task<IReadOnlyDictionary<string, string>> GetLastKasErrorsAsync(
+        IReadOnlyCollection<string> documentIds,
+        CancellationToken cancellationToken = default)
+    {
+        if (documentIds.Count == 0)
+            return new Dictionary<string, string>();
+
+        var runs = await db.KasRuns.AsNoTracking()
+            .Where(r => documentIds.Contains(r.DocumentId))
+            .OrderByDescending(r => r.OccurredAt)
+            .ToListAsync(cancellationToken);
+
+        var result = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (var run in runs)
+        {
+            if (result.ContainsKey(run.DocumentId))
+                continue;
+            result[run.DocumentId] = KasErrorText.FromHttp(run.HttpStatus, run.PayloadJson, run.Ok ? "OK" : "Error");
+        }
+
+        return result;
+    }
+
+    public async Task<RequeueOutcome> RequeueAsync(
+        string documentId,
+        string actor,
+        CancellationToken cancellationToken = default)
+    {
+        var document = await db.Documents.FirstOrDefaultAsync(d => d.DocumentId == documentId, cancellationToken);
+        if (document is null)
+            return new RequeueOutcome.NotFound();
+
+        var queued = await db.OutboxMessages.AnyAsync(
+            o => o.DocumentId == documentId && o.ProcessedAt == null,
+            cancellationToken);
+        if (queued)
+            return new RequeueOutcome.AlreadyQueued();
+
+        var correlationId = string.IsNullOrWhiteSpace(document.CorrelationId)
+            ? CorrelationIds.New()
+            : document.CorrelationId;
+        document.CorrelationId = correlationId;
+        document.Status = DocStatus.pendente;
+
+        db.OutboxMessages.Add(new OutboxMessage
+        {
+            OutboxId = Guid.NewGuid(),
+            Type = OutboxTypes.DocumentUploaded,
+            PayloadJson = JsonSerializer.Serialize(new { documentId, correlationId, reason = "reprocess" }),
+            CreatedAt = DateTimeOffset.UtcNow,
+            ProcessedAt = null,
+            AttemptCount = 0,
+            DocumentId = documentId,
+            CorrelationId = correlationId
+        });
+
+        db.AuditEvents.Add(AuditEventFactory.Create(
+            AuditEventTypes.DocumentUploaded,
+            correlationId,
+            actor,
+            $"Reenvio para o KAAS de {document.FileName}",
+            documentId));
+
+        await db.SaveChangesAsync(cancellationToken);
+        return new RequeueOutcome.Accepted(documentId, nameof(DocStatus.pendente), correlationId);
     }
 
     public Task<Document?> GetAsync(string documentId, CancellationToken cancellationToken = default)

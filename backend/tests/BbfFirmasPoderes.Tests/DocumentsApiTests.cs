@@ -150,6 +150,44 @@ public class DocumentsApiTests : IClassFixture<DocumentsApiFactory>
     }
 
     [Fact]
+    public async Task PostReprocess_UnknownId_Returns404()
+    {
+        var client = AuthenticatedClient();
+
+        var response = await client.PostAsync("/v1/documents/doc_nao_existe/reprocess", null);
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task PostReprocess_PendingOutbox_Returns409_Then202AfterProcessed()
+    {
+        var client = AuthenticatedClient();
+        using var content = Multipart("reprocess.pdf", "application/pdf", TinyPdf);
+        var upload = await client.PostAsync("/v1/documents", content);
+        var json = await upload.Content.ReadFromJsonAsync<JsonElement>();
+        var documentId = json.GetProperty("documentId").GetString();
+        Assert.False(string.IsNullOrWhiteSpace(documentId));
+
+        var conflict = await client.PostAsync($"/v1/documents/{documentId}/reprocess", null);
+        Assert.Equal(HttpStatusCode.Conflict, conflict.StatusCode);
+
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var outbox = await db.OutboxMessages.SingleAsync(o => o.DocumentId == documentId);
+            outbox.ProcessedAt = DateTimeOffset.UtcNow;
+            await db.SaveChangesAsync();
+        }
+
+        var accepted = await client.PostAsync($"/v1/documents/{documentId}/reprocess", null);
+        Assert.Equal(HttpStatusCode.Accepted, accepted.StatusCode);
+        var body = await accepted.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal("pendente", body.GetProperty("status").GetString());
+        Assert.Equal(documentId, body.GetProperty("documentId").GetString());
+    }
+
+    [Fact]
     public async Task GetDocumentStatus_UnknownId_Returns404()
     {
         var client = AuthenticatedClient();

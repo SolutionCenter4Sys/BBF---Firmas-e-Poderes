@@ -8,7 +8,7 @@ import { useDocumentDetail } from "../../_lib/useDocumentDetail";
 
 export default function StructuredPage() {
   const params = useParams<{ id: string }>();
-  const query = useDocumentDetail(routeDocumentId(params.id));
+  const { query } = useDocumentDetail(routeDocumentId(params.id));
 
   return (
     <DocumentQueryView query={query}>

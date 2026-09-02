@@ -10,6 +10,9 @@ public class OutboxMessage
     public string PayloadJson { get; set; } = "{}";
     public DateTimeOffset CreatedAt { get; set; }
     public DateTimeOffset? ProcessedAt { get; set; }
+    public int AttemptCount { get; set; }
+    public DateTimeOffset? NextAttemptAt { get; set; }
+    public string? LastError { get; set; }
     public string? DocumentId { get; set; }
     public string CorrelationId { get; set; } = string.Empty;
 

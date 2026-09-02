@@ -19,6 +19,19 @@ public static class CanonicalMapper
     private static readonly string[] PowerKeys = ["poderes", "powers"];
     private static readonly Regex CnpjRegex = new(@"\d{2}\.\d{3}\.\d{3}/\d{4}-\d{2}", RegexOptions.Compiled);
 
+    // Limites das colunas em people/powers/documents. O texto integral permanece em analysis_json.
+    private const int IdMax = 64;
+    private const int NomeMax = 256;
+    private const int RgMax = 64;
+    private const int PersonTypeMax = 8;
+    private const int QualificacaoMax = 128;
+    private const int CargoMax = 128;
+    private const int OperacaoMax = 256;
+    private const int CurrencyMax = 3;
+    private const int SnippetMax = 1024;
+    private const int RazaoSocialMax = 256;
+    private const int CnpjMax = 32;
+
     public static CanonicalMapping TryMap(string? json, string documentId)
     {
         if (string.IsNullOrWhiteSpace(json) || string.IsNullOrWhiteSpace(documentId))
@@ -56,13 +69,13 @@ public static class CanonicalMapper
         if (string.IsNullOrWhiteSpace(cnpj) || cnpj.Contains('•', StringComparison.Ordinal) || LooksLikeJsonPath(cnpj))
             cnpj = TryExtractCnpj(root) ?? (LooksLikeJsonPath(cnpj) ? null : cnpj);
 
-        var razao = ReadString(source, "razaoSocial")
-            ?? ReadString(source, "razao_social")
-            ?? ReadString(grantor, "legal_name")
-            ?? ReadString(grantor, "razaoSocial")
-            ?? ReadString(source, "legal_name");
-        if (LooksLikeJsonPath(razao))
-            razao = null;
+        var razao = FirstLegalName(
+            ReadAnalysisCompanyName(normalized.AnalysisJson),
+            ReadString(source, "razaoSocial"),
+            ReadString(source, "razao_social"),
+            ReadString(grantor, "legal_name"),
+            ReadString(grantor, "razaoSocial"),
+            ReadString(source, "legal_name"));
 
         var tipo = InferTipoSocietario(
             razao,
@@ -77,8 +90,8 @@ public static class CanonicalMapper
             Structured: true,
             People: people,
             Powers: powers,
-            Cnpj: cnpj,
-            RazaoSocial: razao,
+            Cnpj: cnpj is null ? null : Clamp(cnpj, CnpjMax),
+            RazaoSocial: razao is null ? null : Clamp(razao, RazaoSocialMax),
             TipoSocietario: tipo,
             AnalysisJson: normalized.AnalysisJson,
             CreditReadiness: normalized.Score);
@@ -128,6 +141,76 @@ public static class CanonicalMapper
 
     private static bool LooksLikeJsonPath(string? value)
         => !string.IsNullOrWhiteSpace(value) && value.TrimStart().StartsWith("$.", StringComparison.Ordinal);
+
+    private static string? FirstLegalName(params string?[] candidates)
+    {
+        foreach (var candidate in candidates)
+        {
+            if (LooksLikeLegalName(candidate))
+                return candidate!.Trim();
+        }
+
+        return null;
+    }
+
+    internal static bool LooksLikeLegalName(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value) || LooksLikeJsonPath(value))
+            return false;
+
+        var text = value.Trim();
+        if (text.Length < 3 || text.Length > RazaoSocialMax)
+            return false;
+
+        var lower = text.ToLowerInvariant();
+        if (lower.Contains("emissão", StringComparison.Ordinal)
+            || lower.Contains("emissao", StringComparison.Ordinal)
+            || lower.Contains("notas fiscais", StringComparison.Ordinal)
+            || lower.Contains("ultrapas", StringComparison.Ordinal)
+            || lower.Contains("cujos valores", StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        var hasCompanySuffix = lower.Contains("ltda", StringComparison.Ordinal)
+            || lower.Contains("eireli", StringComparison.Ordinal)
+            || Regex.IsMatch(text, @"\bS[\./]?\s*A\.?\b", RegexOptions.IgnoreCase);
+        if (hasCompanySuffix)
+            return true;
+
+        if (text.Contains('•', StringComparison.Ordinal))
+            return true;
+
+        if (char.IsLower(text[0]) && text.Contains(' ', StringComparison.Ordinal))
+            return false;
+
+        return text.Count(char.IsLetter) >= 3;
+    }
+
+    private static string? ReadAnalysisCompanyName(string analysisJson)
+    {
+        if (string.IsNullOrWhiteSpace(analysisJson))
+            return null;
+
+        try
+        {
+            using var doc = JsonDocument.Parse(analysisJson);
+            if (doc.RootElement.ValueKind != JsonValueKind.Object
+                || !doc.RootElement.TryGetProperty("company", out var company)
+                || company.ValueKind != JsonValueKind.Object)
+            {
+                return null;
+            }
+
+            return ReadString(company, "legal_name")
+                ?? ReadString(company, "razaoSocial")
+                ?? ReadString(company, "razao_social");
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
+    }
 
     private static bool TryFindCanonicalObject(JsonElement el, int depth, out JsonElement found)
     {
@@ -184,20 +267,22 @@ public static class CanonicalMapper
             {
                 PersonId = MakeId(documentId, rawId, "p", index),
                 DocumentId = documentId,
-                Nome = name,
+                Nome = Clamp(name, NomeMax),
                 Cpf = PiiMask.Cpf(cpf),
                 Documento = personType.Equals("pj", StringComparison.OrdinalIgnoreCase)
                     ? PiiMask.Cnpj(cnpj)
                     : PiiMask.Cpf(cpf),
-                Rg = ReadString(item, "rg") ?? string.Empty,
-                PersonType = personType.ToLowerInvariant(),
+                Rg = Clamp(ReadString(item, "rg"), RgMax),
+                PersonType = Clamp(personType.ToLowerInvariant(), PersonTypeMax),
                 Quotas = ReadDecimal(item, "quotas"),
                 MandateStart = ReadDate(item, "mandate_start") ?? ReadDate(item, "mandateStart"),
                 MandateEnd = ReadDate(item, "mandate_end") ?? ReadDate(item, "mandateEnd"),
-                Qualificacao = ReadString(item, "qualificacao")
-                    ?? ReadString(item, "qualification")
-                    ?? personType.ToUpperInvariant(),
-                Cargo = ReadString(item, "cargo") ?? ReadString(item, "role") ?? string.Empty,
+                Qualificacao = Clamp(
+                    ReadString(item, "qualificacao")
+                        ?? ReadString(item, "qualification")
+                        ?? personType.ToUpperInvariant(),
+                    QualificacaoMax),
+                Cargo = Clamp(ReadString(item, "cargo") ?? ReadString(item, "role"), CargoMax),
                 Status = ParsePersonStatus(ReadString(item, "status"))
             });
             index++;
@@ -257,23 +342,28 @@ public static class CanonicalMapper
             {
                 PowerId = MakeId(documentId, rawId, "pw", index),
                 DocumentId = documentId,
-                Pessoa = ReadString(item, "pessoa")
-                    ?? ReadString(item, "person")
-                    ?? FirstString(item, "granted_to")
-                    ?? string.Empty,
-                Operacao = ReadString(item, "operacao")
-                    ?? ReadString(item, "operation")
-                    ?? ReadString(item, "text")
-                    ?? string.Empty,
-                LimiteCurrency = ReadString(limite, "currency") ?? ReadString(item, "limiteCurrency") ?? "BRL",
+                Pessoa = Clamp(
+                    ReadString(item, "pessoa")
+                        ?? ReadString(item, "person")
+                        ?? FirstString(item, "granted_to"),
+                    NomeMax),
+                Operacao = Clamp(
+                    ReadString(item, "operacao")
+                        ?? ReadString(item, "operation")
+                        ?? ReadString(item, "text"),
+                    OperacaoMax),
+                LimiteCurrency = Clamp(
+                    ReadString(limite, "currency") ?? ReadString(item, "limiteCurrency") ?? "BRL",
+                    CurrencyMax),
                 LimiteValue = ReadDecimal(limite, "value")
                     ?? ReadDecimal(item, "limiteValue")
                     ?? ReadDecimal(item, "value_limit")
                     ?? 0m,
-                LimiteExpression = ReadString(limite, "expression")
-                    ?? ReadString(item, "limiteExpression")
-                    ?? JoinStrings(item, "restrictions")
-                    ?? string.Empty,
+                LimiteExpression = Clamp(
+                    ReadString(limite, "expression")
+                        ?? ReadString(item, "limiteExpression")
+                        ?? JoinStrings(item, "restrictions"),
+                    OperacaoMax),
                 ModoAssinaturaTipo = ParseSignatureMode(
                     ReadString(modo, "tipo")
                     ?? ReadString(item, "modoAssinaturaTipo")
@@ -290,10 +380,11 @@ public static class CanonicalMapper
                     ?? 0,
                 SourceOffsetStart = ReadInt(trace, "offsetStart") ?? ReadInt(trace, "offset_start") ?? ReadInt(item, "sourceOffsetStart") ?? 0,
                 SourceOffsetEnd = ReadInt(trace, "offsetEnd") ?? ReadInt(trace, "offset_end") ?? ReadInt(item, "sourceOffsetEnd") ?? 0,
-                SourceSnippet = ReadString(trace, "snippet")
-                    ?? ReadString(item, "sourceSnippet")
-                    ?? ReadString(citation, "excerpt")
-                    ?? string.Empty
+                SourceSnippet = Clamp(
+                    ReadString(trace, "snippet")
+                        ?? ReadString(item, "sourceSnippet")
+                        ?? ReadString(citation, "excerpt"),
+                    SnippetMax)
             });
             index++;
         }
@@ -304,9 +395,25 @@ public static class CanonicalMapper
     private static string MakeId(string documentId, string? raw, string prefix, int index)
     {
         var local = string.IsNullOrWhiteSpace(raw) ? $"{prefix}{index}" : raw.Trim();
-        if (local.StartsWith(documentId + ":", StringComparison.Ordinal))
-            return local;
-        return $"{documentId}:{local}";
+        var id = local.StartsWith(documentId + ":", StringComparison.Ordinal)
+            ? local
+            : $"{documentId}:{local}";
+
+        // Ids longos do KAAS cabem via fallback posicional, estável entre reprocessamentos.
+        return id.Length <= IdMax ? id : Clamp($"{documentId}:{prefix}{index}", IdMax);
+    }
+
+    /// <summary>Corta o texto ao limite da coluna, sinalizando o truncamento com reticências.</summary>
+    private static string Clamp(string? value, int max)
+    {
+        if (string.IsNullOrEmpty(value))
+            return string.Empty;
+
+        var trimmed = value.Trim();
+        if (trimmed.Length <= max)
+            return trimmed;
+
+        return max <= 1 ? trimmed[..max] : trimmed[..(max - 1)].TrimEnd() + "…";
     }
 
     private static JsonElement? FindArray(JsonElement obj, string[] names)
