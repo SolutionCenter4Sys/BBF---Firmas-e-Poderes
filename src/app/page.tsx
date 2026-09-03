@@ -221,7 +221,7 @@ export default function DashboardPage() {
       setWatchId(accepted.documentId);
       setNotice({
         kind: "ok",
-        text: `${file.name} persistido. KAAS pode levar até 5 minutos — o Dashboard acompanha o status.`
+        text: `${file.name} persistido. O Dashboard acompanha o status.`
       });
       await refresh();
     } catch (err) {
@@ -257,7 +257,7 @@ export default function DashboardPage() {
           >
             <h3 id="confirm-upload-title">Confirmar envio do documento</h3>
             <p id="confirm-upload-description">
-              O arquivo será persistido no Postgres e enviado ao KAAS. A leitura pode levar até 5 minutos.
+              O arquivo será persistido no Postgres e enviado ao KAAS.
               O Dashboard permanece aberto e atualiza o status sozinho.
             </p>
             <div className="modal-file">
@@ -300,7 +300,7 @@ export default function DashboardPage() {
       {showProcessingHint && processing.length > 0 && (
         <div className="banner banner--ok" role="status">
           ✓ Leitura KAAS em andamento ({processing.map((d) => `${d.fileName}: ${pipelineLabel(d.status)}`).join(" · ")}).
-          Pode levar até 5 minutos. Não é necessário reenviar enquanto o status for processamento.
+          Não é necessário reenviar enquanto o status for processamento.
         </div>
       )}
 

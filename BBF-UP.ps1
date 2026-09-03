@@ -37,14 +37,20 @@ function Stop-ListenPort([int]$Port) {
 }
 
 function Stop-DockerApp {
-    foreach ($name in @("bbf-api", "bbf-worker", "bbf-web")) {
-        docker stop $name 2>$null | Out-Null
-    }
-    Push-Location $Root
+    $prev = $ErrorActionPreference
+    $ErrorActionPreference = "Continue"
     try {
-        docker compose stop api worker web 2>$null | Out-Null
+        foreach ($name in @("bbf-api", "bbf-worker", "bbf-web")) {
+            docker stop $name 2>$null | Out-Null
+        }
+        Push-Location $Root
+        try {
+            docker compose stop api worker web 2>$null | Out-Null
+        } finally {
+            Pop-Location
+        }
     } finally {
-        Pop-Location
+        $ErrorActionPreference = $prev
     }
 }
 
