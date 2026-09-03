@@ -80,7 +80,7 @@ export default function CanonicalPage() {
               <div>
                 <h2>Modelo Canônico</h2>
                 <div className="subtitle">
-                  <code>{doc.documentId}</code> · {doc.fileName} · schema <code>canonical-powers/v1.0.0</code>
+                  <code>{doc.documentId}</code> · {doc.fileName}
                   {doc.cnpj ? <> · CNPJ {doc.cnpj}</> : null}
                 </div>
               </div>

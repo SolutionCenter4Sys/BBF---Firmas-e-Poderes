@@ -91,7 +91,7 @@ export default function ReviewQueuePage() {
       <div className="page-header">
         <div>
           <h2>Fila de Revisão Humana</h2>
-          <div className="subtitle">GET <code>/v1/documents?status={status}</code> — baixa confiança / revisão</div>
+          <div className="subtitle">Documentos em baixa confiança ou revisão humana</div>
         </div>
         <div style={{ display: "flex", gap: 8 }}>
           {nextHref

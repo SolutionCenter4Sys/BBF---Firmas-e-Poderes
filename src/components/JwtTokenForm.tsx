@@ -27,7 +27,7 @@ export function JwtTokenForm({
     setError(null);
     try {
       const session = await loginWithPassword(email, password);
-      setAccessToken(session.accessToken);
+      setAccessToken(session.accessToken, { email: session.email, role: session.role });
       setPassword("");
       await onSaved();
     } catch (err) {

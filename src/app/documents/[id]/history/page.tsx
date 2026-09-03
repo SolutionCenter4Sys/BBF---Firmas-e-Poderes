@@ -35,7 +35,7 @@ export default function HistoryPage() {
               <div>
                 <h2>Histórico de versões</h2>
                 <div className="subtitle">
-                  <code>{doc.documentId}</code> · {doc.fileName} · {versions.length} versões derivadas de GET /status e GET /canonical
+                  <code>{doc.documentId}</code> · {doc.fileName} · {versions.length} versões
                 </div>
               </div>
               <Link href={`/documents/${doc.documentId}`} className="btn btn--ghost">← Voltar ao documento</Link>

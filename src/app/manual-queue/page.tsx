@@ -56,7 +56,7 @@ export default function ManualQueuePage() {
       <div className="page-header">
         <div>
           <h2>Análise Manual</h2>
-          <div className="subtitle">GET <code>/v1/documents?status={status}</code> — decisões MANUAL / canônico a validar</div>
+          <div className="subtitle">Decisões manuais e canônico a validar</div>
         </div>
         {nextHref
           ? <Link className="btn btn--primary" href={nextHref}>Atender próximo</Link>

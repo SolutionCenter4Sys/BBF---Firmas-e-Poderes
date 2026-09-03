@@ -18,7 +18,7 @@ export default function LoginPage() {
     setError(null);
     try {
       const session = await loginWithPassword(email, password);
-      setAccessToken(session.accessToken);
+      setAccessToken(session.accessToken, { email: session.email, role: session.role });
       router.replace("/");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Não foi possível entrar.");

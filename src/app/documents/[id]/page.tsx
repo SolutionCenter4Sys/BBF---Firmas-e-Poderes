@@ -50,7 +50,7 @@ export default function DocumentDetailPage() {
                   <code>{doc.documentId}</code>
                   {doc.cnpj ? <> · CNPJ {doc.cnpj}</> : null}
                   {doc.paginas > 0 ? <> · {doc.paginas} pgs</> : null}
-                  {polling ? <> · poll GET /status</> : null}
+                  {polling ? <> · atualizando…</> : null}
                 </div>
               </div>
               <div style={{ display: "flex", gap: 8 }}>

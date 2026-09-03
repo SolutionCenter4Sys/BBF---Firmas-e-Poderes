@@ -108,7 +108,7 @@ export default function AuditPage() {
       <div className="page-header">
         <div>
           <h2>Auditoria</h2>
-          <div className="subtitle">GET <code>/v1/audit/trail</code> — trilha imutável agrupada por correlationId</div>
+          <div className="subtitle">Trilha imutável agrupada por correlação</div>
         </div>
         <button type="button" className="btn btn--secondary" onClick={exportCsv} disabled={filtered.length === 0}>
           Exportar CSV

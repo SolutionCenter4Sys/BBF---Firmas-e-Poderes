@@ -137,7 +137,7 @@ function DecisionWorkspace() {
         <div>
           <h2>Decisão</h2>
           <div className="subtitle">
-            POST <code>/v1/decision/evaluate</code> · replay <code>/v1/decision/{"{id}"}/replay</code>
+            Avaliar operação e repetir decisão já registrada
             {record && (
               <>
                 {" "}· <code>{record.decisionId}</code> · documento{" "}

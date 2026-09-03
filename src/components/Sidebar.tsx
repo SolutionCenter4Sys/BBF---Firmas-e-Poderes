@@ -1,7 +1,14 @@
 "use client";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { clearAccessToken } from "@/lib/auth";
+import {
+  AUTH_SESSION_EVENT,
+  AUTH_UNAUTHORIZED_EVENT,
+  clearAccessToken,
+  getAuthProfile,
+  type AuthProfile
+} from "@/lib/auth";
 
 interface NavItem {
   href: string;
@@ -50,7 +57,6 @@ const groups: NavGroup[] = [
   {
     title: "Plataforma",
     items: [
-      { href: "/sources/health", label: "Saúde das fontes" },
       { href: "/observability", label: "Observabilidade" },
       { href: "/api-consumers", label: "Consumidores da API" },
       { href: "/api-helper", label: "API Helper" },
@@ -62,9 +68,21 @@ const groups: NavGroup[] = [
 export default function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
+  const [profile, setProfile] = useState<AuthProfile | null>(null);
   const showEnvBadge =
     process.env.NEXT_PUBLIC_APP_ENV === "development"
     || process.env.NEXT_PUBLIC_APP_ENV === "staging";
+
+  useEffect(() => {
+    const sync = () => setProfile(getAuthProfile());
+    sync();
+    window.addEventListener(AUTH_SESSION_EVENT, sync);
+    window.addEventListener(AUTH_UNAUTHORIZED_EVENT, sync);
+    return () => {
+      window.removeEventListener(AUTH_SESSION_EVENT, sync);
+      window.removeEventListener(AUTH_UNAUTHORIZED_EVENT, sync);
+    };
+  }, []);
 
   const logout = () => {
     clearAccessToken();
@@ -104,9 +122,17 @@ export default function Sidebar() {
           </div>
         ))}
       </nav>
-      <button type="button" className="btn btn--ghost sidebar-logout" onClick={logout}>
-        Sair
-      </button>
+      <div className="sidebar-footer">
+        {profile && (
+          <div className="sidebar-user" aria-label="Usuário autenticado">
+            <strong>{profile.name}</strong>
+            <span>{profile.roleLabel}</span>
+          </div>
+        )}
+        <button type="button" className="btn btn--primary sidebar-logout" onClick={logout}>
+          Sair
+        </button>
+      </div>
     </aside>
   );
 }
