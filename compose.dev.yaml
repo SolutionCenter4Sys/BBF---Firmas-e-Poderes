@@ -1,0 +1,23 @@
+# Mesmo project name do compose.yaml: db e volume bbf_pgdata compartilhados.
+name: bbf-firmas
+
+services:
+  db:
+    image: postgres:16
+    container_name: bbf-db
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: bbf
+      POSTGRES_PASSWORD: bbf
+      POSTGRES_DB: bbf_firmas
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U bbf -d bbf_firmas"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    volumes:
+      - bbf_pgdata:/var/lib/postgresql/data
+
+volumes:
+  bbf_pgdata:

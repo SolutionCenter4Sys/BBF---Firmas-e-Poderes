@@ -1,5 +1,6 @@
 "use client";
 import { useMemo, useState } from "react";
+import { MockDataBanner } from "@/components/MockDataBanner";
 import { apiConsumers, type ConsumerStatus } from "@/lib/mocks";
 
 const fmtDate = (iso: string) => new Date(iso).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
@@ -35,6 +36,8 @@ export default function ApiConsumersPage() {
           <button className="btn btn--primary">+ Cadastrar consumer</button>
         </div>
       </div>
+
+      <MockDataBanner detail="GET de consumidores OAuth não existe. Seed visual." />
 
       <div className="grid-3">
         <div className="metric-card">

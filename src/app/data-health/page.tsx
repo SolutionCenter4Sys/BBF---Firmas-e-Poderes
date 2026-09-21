@@ -1,3 +1,4 @@
+import { MockDataBanner } from "@/components/MockDataBanner";
 import { piiScans, piiTendencia30d } from "@/lib/mocks";
 
 const fmtDate = (iso: string) => new Date(iso).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
@@ -24,6 +25,8 @@ export default function DataHealthPage() {
         </div>
         <button className="btn btn--secondary">Executar scan agora</button>
       </div>
+
+      <MockDataBanner detail="GET de scans PII não existe. Seed visual." />
 
       <div className="grid-3">
         <div className="metric-card" style={{ borderLeftColor: coberturaGlobal >= 0.999 ? "var(--color-status-approved)" : "var(--color-status-manual)" }}>

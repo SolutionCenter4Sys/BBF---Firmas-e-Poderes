@@ -1,4 +1,4 @@
-import type { DocStatus } from "@/lib/mocks";
+import type { DocStatus } from "@/domain";
 
 const STAGES = [
   { key: "uploaded", label: "1. Upload" },

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { MockDataBanner } from "@/components/MockDataBanner";
 import { diffs, findDocument } from "@/lib/mocks";
 
 const fmtDate = (iso: string) => new Date(iso).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "long" });
@@ -36,6 +37,8 @@ export default function DiffPage({ params }: { params: { docId: string } }) {
           <button className="btn btn--secondary">Reconsultar fonte</button>
         </div>
       </div>
+
+      <MockDataBanner detail="GET de diff documento × fonte não existe. Seed visual." />
 
       <div className="grid-3">
         <div className="metric-card" style={{ borderLeftColor: "var(--color-status-rejected)" }}>

@@ -1,0 +1,242 @@
+{
+  "kas_format": "journey",
+  "kas_format_version": 1,
+  "name": "Testes Firmas e Poderes",
+  "code": "testes-firmas-e-poderes",
+  "description": "Ingestão multiformato e análise societária para aquisição de crédito, com OCR, representantes, poderes, validações, score e justificativa auditável.",
+  "tags": ["kyb", "credito", "assinaturas", "poderes", "documentos", "societario"],
+  "icon": "🧾",
+  "color": "#2563EB",
+  "category": "kyb",
+  "locale": "pt-BR",
+  "visibility": "internal",
+  "default_priority": "normal",
+  "trigger_type": "api",
+  "expected_sla_ms": "600000",
+  "schema": {
+    "json_schema": {
+      "$id": "testes-firmas-e-poderes-input-v2",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "title": "testes-firmas-e-poderes",
+      "required": ["document_url"],
+      "properties": {
+        "document_url": {
+          "type": "string",
+          "format": "uri",
+          "description": "Arquivo societário enviado por multipart: PDF, DOCX, DOC, ODT ou RTF.",
+          "x-kas-upload": true,
+          "contentMediaType": "application/octet-stream",
+          "x-kas-accept": [
+            "application/pdf",
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            "application/msword",
+            "application/vnd.oasis.opendocument.text",
+            "application/rtf",
+            "text/rtf"
+          ]
+        },
+        "intended_act": {
+          "type": "string",
+          "description": "Ato/operação de crédito cuja alçada deve ser validada."
+        },
+        "company": {
+          "type": "object",
+          "properties": {
+            "cnpj": { "type": "string" },
+            "uf": { "type": "string" }
+          }
+        }
+      }
+    }
+  },
+  "dag": {
+    "edges": [
+      {
+        "id": "document-intelligence->powers-extract-0",
+        "from": "document-intelligence",
+        "to": "powers-extract"
+      },
+      {
+        "id": "powers-extract->authority-check-1",
+        "from": "powers-extract",
+        "to": "authority-check"
+      },
+      {
+        "id": "authority-check->consolidated-verdict-2",
+        "from": "authority-check",
+        "from_handle": "out",
+        "to": "consolidated-verdict"
+      },
+      {
+        "id": "consolidated-verdict->structured-api-response-3",
+        "from": "consolidated-verdict",
+        "to": "structured-api-response"
+      }
+    ],
+    "nodes": [
+      {
+        "id": "document-intelligence",
+        "kind": "document_intelligence",
+        "name": "Identificação, OCR e análise documental",
+        "ui": { "x": 374, "y": 24 },
+        "config": {
+          "max_pages": 80,
+          "ocr_policy": "auto",
+          "timeout_ms": 180000,
+          "crop_stamps": true,
+          "crop_signatures": true,
+          "detect_signatures": true,
+          "recognize_signatures": true,
+          "extract_all": true,
+          "extract_context": true,
+          "output_language": "pt-BR",
+          "output_fields": [
+            { "name": "detected_file_type", "type": "string" },
+            { "name": "detected_mime_type", "type": "string" },
+            { "name": "is_scanned_document", "type": "boolean" },
+            { "name": "ocr_applied", "type": "boolean" },
+            { "name": "document_language", "type": "string" },
+            { "name": "document_type", "type": "string" },
+            { "name": "registration_number", "type": "string" },
+            { "name": "registration_authority", "type": "string" },
+            { "name": "registration_state", "type": "string" },
+            { "name": "registration_date", "type": "string" },
+            { "name": "effective_date", "type": "string" },
+            { "name": "last_amendment_date", "type": "string" },
+            { "name": "is_consolidated_amendment", "type": "boolean" },
+            { "name": "authenticity_indicators", "type": "string" },
+            { "name": "company_cnpj", "type": "string" },
+            { "name": "company_legal_name", "type": "string" },
+            { "name": "company_trade_name", "type": "string" },
+            { "name": "company_legal_form", "type": "string" },
+            { "name": "company_nire", "type": "string" },
+            { "name": "company_registered_address", "type": "string" },
+            { "name": "company_share_capital", "type": "string" },
+            { "name": "company_business_purpose", "type": "string" },
+            { "name": "company_duration", "type": "string" }
+          ]
+        },
+        "inputs_map": {
+          "document_url": "$.payload.document_url"
+        }
+      },
+      {
+        "id": "powers-extract",
+        "kind": "powers_extract",
+        "name": "Extração de pessoas, firmas e poderes",
+        "ui": { "x": 724, "y": 24 },
+        "config": {
+          "max_pages": 80,
+          "timeout_ms": 180000,
+          "output_language": "pt-BR"
+        },
+        "inputs_map": {
+          "corpus": "$.nodes.document-intelligence.output.corpus",
+          "stamps": "$.nodes.document-intelligence.output.stamps",
+          "signatures": "$.nodes.document-intelligence.output.signatures",
+          "document_url": "$.payload.document_url",
+          "analysis_date": "$.now"
+        }
+      },
+      {
+        "id": "authority-check",
+        "kind": "powers_authority_check",
+        "name": "Validação cadastral, alçada e poderes",
+        "ui": { "x": 1074, "y": 24 },
+        "config": {
+          "output_language": "pt-BR",
+          "persist_entity_store": true
+        },
+        "inputs_map": {
+          "envelope": "$.nodes.powers-extract.output.envelope",
+          "intended_act": "$.payload.intended_act",
+          "expected_cnpj": "$.payload.company.cnpj"
+        }
+      },
+      {
+        "id": "consolidated-verdict",
+        "kind": "verdict",
+        "name": "Veredito e score de prontidão para crédito",
+        "ui": { "x": 1424, "y": 24 },
+        "config": {
+          "output_language": "pt-BR",
+          "quality_gate_codes": [],
+          "include_internal_gates": true,
+          "include_pipeline_failures": true
+        },
+        "inputs_map": {
+          "powers_analysis": "$.nodes.powers-extract.output",
+          "document_analysis": "$.nodes.document-intelligence.output",
+          "authority_validation": "$.nodes.authority-check.output"
+        }
+      },
+      {
+        "id": "structured-api-response",
+        "kind": "transform",
+        "name": "Estruturar resposta de firmas e poderes",
+        "ui": { "x": 1774, "y": 24 },
+        "config": {
+          "expression": {
+            "case_id": "$.case.id",
+            "document": {
+              "file_type": "$.nodes.document-intelligence.output.context.detected_file_type",
+              "mime_type": "$.nodes.document-intelligence.output.corpus.mime_type",
+              "page_count": "$.nodes.document-intelligence.output.corpus.page_count",
+              "is_scanned": "$.nodes.document-intelligence.output.context.is_scanned_document",
+              "ocr_applied": "$.nodes.document-intelligence.output.context.ocr_applied",
+              "language": "$.nodes.document-intelligence.output.context.document_language",
+              "document_type": "$.nodes.document-intelligence.output.context.document_type",
+              "registration_number": "$.nodes.document-intelligence.output.context.registration_number",
+              "registration_authority": "$.nodes.document-intelligence.output.context.registration_authority",
+              "registration_state": "$.nodes.document-intelligence.output.context.registration_state",
+              "registration_date": "$.nodes.document-intelligence.output.context.registration_date",
+              "effective_date": "$.nodes.document-intelligence.output.context.effective_date",
+              "last_amendment_date": "$.nodes.document-intelligence.output.context.last_amendment_date",
+              "is_consolidated_amendment": "$.nodes.document-intelligence.output.context.is_consolidated_amendment",
+              "authenticity_indicators": "$.nodes.document-intelligence.output.context.authenticity_indicators",
+              "warnings": "$.nodes.document-intelligence.output.corpus.warnings",
+              "truncated": "$.nodes.document-intelligence.output.corpus.truncated",
+              "skipped_pages": "$.nodes.document-intelligence.output.corpus.skipped_pages",
+              "needs_ocr_pages": "$.nodes.document-intelligence.output.corpus.needs_ocr_pages"
+            },
+            "company": {
+              "cnpj": "$.nodes.powers-extract.output.envelope.grantor.cnpj",
+              "legal_name": "$.nodes.powers-extract.output.envelope.grantor.legal_name",
+              "trade_name": "$.nodes.document-intelligence.output.context.company_trade_name",
+              "legal_form": "$.nodes.powers-extract.output.envelope.grantor.legal_form",
+              "nire": "$.nodes.document-intelligence.output.context.company_nire",
+              "registered_address": "$.nodes.document-intelligence.output.context.company_registered_address",
+              "share_capital": "$.nodes.document-intelligence.output.context.company_share_capital",
+              "business_purpose": "$.nodes.document-intelligence.output.context.company_business_purpose",
+              "duration": "$.nodes.document-intelligence.output.context.company_duration"
+            },
+            "people": "$.nodes.powers-extract.output.envelope.representatives",
+            "powers": "$.nodes.powers-extract.output.envelope.powers",
+            "signature_rules": "$.nodes.powers-extract.output.envelope.signature_rules",
+            "signatures": "$.nodes.document-intelligence.output.signatures",
+            "stamps": "$.nodes.document-intelligence.output.stamps",
+            "validations": "$.nodes.authority-check.output.checks",
+            "risks": "$.nodes.authority-check.output.conflicts",
+            "pendencies": "$.nodes.authority-check.output.pending_requirements",
+            "authority_decision": "$.nodes.authority-check.output.decision",
+            "authority_reason": "$.nodes.authority-check.output.reason",
+            "verdict": "$.nodes.consolidated-verdict.output.verdict",
+            "score": "$.nodes.consolidated-verdict.output.scorecard.score",
+            "score_breakdown": "$.nodes.consolidated-verdict.output.scorecard",
+            "score_justification": "$.nodes.consolidated-verdict.output.executive_summary",
+            "generated_at": "$.now"
+          }
+        }
+      }
+    ],
+    "start": ["document-intelligence"],
+    "input_schema": {
+      "$ref": "#/schema/json_schema"
+    },
+    "ui_metadata": {
+      "start_ui": { "x": 24, "y": 24 },
+      "viewport": { "x": -73, "y": 310, "zoom": 1.149 }
+    }
+  }
+}

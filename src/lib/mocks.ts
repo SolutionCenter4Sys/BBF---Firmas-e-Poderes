@@ -1,84 +1,27 @@
-// Mocks volumosos do MVP — substituídos por chamadas REST reais no Step 12
+// Seed visual do MVP. Tipos em src/domain/. Telas ainda leem daqui (WF-13 não migra REST).
+import type {
+  ApiConsumer,
+  AuditEvent,
+  CostBreakdown,
+  CostByConsumer,
+  DecisionRecord,
+  DmnRule,
+  Document,
+  DocumentDiff,
+  DocumentSection,
+  DocumentVersion,
+  DpoRequest,
+  ManualQueueItem,
+  OpenApiEndpoint,
+  Operation,
+  PiiScanResult,
+  ReviewItem,
+  RoleDefinition,
+  SourceHealth,
+  UserMock
+} from "@/domain";
 
-export type DocStatus =
-  | "pendente"
-  | "processando_ocr"
-  | "processando_iagen"
-  | "processando_ner"
-  | "canonico_pronto"
-  | "validacao_oficial"
-  | "decidido"
-  | "revisao_humana"
-  | "falha";
-
-export type DecisionStatus = "APROVADO" | "REPROVADO" | "MANUAL";
-
-export interface Person {
-  personId: string;
-  nome: string;
-  cpf: string;
-  qualificacao: string;
-  cargo: string;
-  status: "ativo" | "inativo";
-}
-
-export interface Power {
-  powerId: string;
-  pessoa: string;
-  operacao: string;
-  limite: { currency: "BRL"; value: number; expression: string };
-  modoAssinatura: { tipo: "isolada" | "conjunta"; n?: number; m?: number; qualificacoes?: string[] };
-  vigencia: { validFrom: string; validTo?: string };
-  sourceTrace: { page: number; offsetStart: number; offsetEnd: number; snippet: string };
-}
-
-export interface Document {
-  documentId: string;
-  fileName: string;
-  cnpj: string;
-  razaoSocial: string;
-  tipoSocietario: "LTDA" | "S.A." | "EIRELI";
-  uploadedAt: string;
-  uploadedBy: string;
-  status: DocStatus;
-  hash: string;
-  paginas: number;
-  confianca: { ocr: number; iagen: number; ner: number };
-  socios: Person[];
-  poderes: Power[];
-}
-
-export interface DecisionEvidence {
-  type: "documento" | "fonte_oficial";
-  trace?: { page: number; offsetStart: number; offsetEnd: number; snippet: string };
-  fonte?: string;
-  detalhe: string;
-}
-
-export interface DecisionRecord {
-  decisionId: string;
-  documentId: string;
-  cnpj: string;
-  operacao: string;
-  signatariosSolicitados: string[];
-  status: DecisionStatus;
-  motivos: string[];
-  evidencias: DecisionEvidence[];
-  versions: { rules: string; canonical: string; aiPrompt: string; aiModel: string };
-  evaluatedAt: string;
-  latencyMs: number;
-}
-
-export interface AuditEvent {
-  eventId: string;
-  correlationId: string;
-  documentId?: string;
-  decisionId?: string;
-  type: string;
-  actor: string;
-  timestamp: string;
-  details: string;
-}
+export type * from "@/domain";
 
 // 12 documentos mockados representando volume realista
 export const documents: Document[] = [
@@ -215,27 +158,6 @@ export function findDecisionByDocumentId(documentId: string): DecisionRecord | u
 // =====================================================================
 
 // --- Fila de Revisão Humana (EP-01-F7) ---
-export type ReviewMotivo =
-  | "ocr_baixa_confianca"
-  | "iagen_baixa_confianca"
-  | "ner_baixa_confianca"
-  | "clausula_ambigua"
-  | "qualidade_documento";
-
-export interface ReviewItem {
-  reviewId: string;
-  documentId: string;
-  cnpj: string;
-  razaoSocial: string;
-  motivo: ReviewMotivo;
-  motivoLegivel: string;
-  scoreCritico: number;
-  enfileiradoEm: string;
-  slaHoras: number;
-  prioridade: "alta" | "media" | "baixa";
-  responsavel?: string;
-}
-
 export const reviewQueue: ReviewItem[] = [
   { reviewId: "rev_001", documentId: "doc_003", cnpj: "55.666.777/0001-22", razaoSocial: "Gama Investimentos LTDA", motivo: "ner_baixa_confianca", motivoLegivel: "Confiança da extração NER abaixo do threshold (66% < 75%)", scoreCritico: 0.66, enfileiradoEm: "2026-04-29T09:48:00Z", slaHoras: 4, prioridade: "alta", responsavel: "ana.silva@bbf.com.br" },
   { reviewId: "rev_002", documentId: "doc_007", cnpj: "44.555.666/0001-77", razaoSocial: "Eta Consultoria LTDA", motivo: "qualidade_documento", motivoLegivel: "Documento PDF protegido / qualidade baixa para OCR", scoreCritico: 0.32, enfileiradoEm: "2026-04-28T11:48:00Z", slaHoras: 8, prioridade: "alta" },
@@ -244,21 +166,6 @@ export const reviewQueue: ReviewItem[] = [
 ];
 
 // --- Fila de Análise Manual (EP-04-F5) ---
-export interface ManualQueueItem {
-  manualId: string;
-  decisionId?: string;
-  documentId: string;
-  cnpj: string;
-  razaoSocial: string;
-  operacao: string;
-  motivo: string;
-  enfileiradoEm: string;
-  slaHoras: number;
-  prioridade: "alta" | "media" | "baixa";
-  valorOperacao?: number;
-  responsavel?: string;
-}
-
 export const manualQueue: ManualQueueItem[] = [
   { manualId: "man_001", decisionId: "dec_003", documentId: "doc_003", cnpj: "55.666.777/0001-22", razaoSocial: "Gama Investimentos LTDA", operacao: "Abertura de conta", motivo: "Cláusula de poderes ambígua + baixa confiança NER", enfileiradoEm: "2026-04-29T09:51:08Z", slaHoras: 4, prioridade: "alta", responsavel: "ana.silva@bbf.com.br" },
   { manualId: "man_002", documentId: "doc_005", cnpj: "22.333.444/0001-55", razaoSocial: "Epsilon Tech LTDA", operacao: "Contratação de crédito", motivo: "Validação Junta Comercial indisponível (timeout 3x)", enfileiradoEm: "2026-04-28T16:45:00Z", slaHoras: 8, prioridade: "media", valorOperacao: 850000 },
@@ -267,25 +174,6 @@ export const manualQueue: ManualQueueItem[] = [
 ];
 
 // --- Diff Documento × Oficial (EP-03-F1+F4) ---
-export interface DiffItem {
-  campo: string;
-  valorDocumento: string;
-  valorOficial: string;
-  fonte: string;
-  severidade: "alta" | "media" | "baixa" | "ok";
-  observacao?: string;
-}
-
-export interface DocumentDiff {
-  documentId: string;
-  cnpj: string;
-  fonteConsultada: string;
-  consultadoEm: string;
-  latenciaMs: number;
-  cacheHit: boolean;
-  itens: DiffItem[];
-}
-
 export const diffs: Record<string, DocumentDiff> = {
   doc_001: {
     documentId: "doc_001",
@@ -322,14 +210,6 @@ export const diffs: Record<string, DocumentDiff> = {
 };
 
 // --- Visão semiestruturada (EP-01-F3) ---
-export interface DocumentSection {
-  titulo: string;
-  paginaInicio: number;
-  paginaFim: number;
-  confianca: number;
-  resumo: string;
-}
-
 export const documentSections: Record<string, DocumentSection[]> = {
   doc_001: [
     { titulo: "Qualificação das partes", paginaInicio: 1, paginaFim: 2, confianca: 0.97, resumo: "Identificação dos sócios João da Silva, Maria Souza e Carlos Pereira (CPF, qualificação, residência)." },
@@ -351,15 +231,6 @@ export const documentSections: Record<string, DocumentSection[]> = {
 };
 
 // --- Histórico de versões (EP-01-F5) ---
-export interface DocumentVersion {
-  versionId: string;
-  tipo: "raw" | "ocr" | "iagen" | "ner" | "canonical";
-  criadoEm: string;
-  tamanhoBytes: number;
-  hash: string;
-  notas: string;
-}
-
 export const documentHistory: Record<string, DocumentVersion[]> = {
   doc_001: [
     { versionId: "v0", tipo: "raw", criadoEm: "2026-04-29T14:22:00Z", tamanhoBytes: 2_350_000, hash: "a3f2c4e1...e9d1", notas: "Upload original (PDF)" },
@@ -378,19 +249,6 @@ export const documentHistory: Record<string, DocumentVersion[]> = {
 };
 
 // --- Saúde das fontes externas (EP-03-F7) ---
-export interface SourceHealth {
-  sourceId: string;
-  nome: string;
-  status: "operacional" | "degradado" | "indisponivel";
-  uptime24h: number;
-  latenciaP95Ms: number;
-  errorRate: number;
-  cacheHitRate: number;
-  ultimaConsulta: string;
-  circuitBreaker: "fechado" | "meio-aberto" | "aberto";
-  observacao?: string;
-}
-
 export const sourceHealth: SourceHealth[] = [
   { sourceId: "junta-sp", nome: "Junta Comercial SP", status: "operacional", uptime24h: 0.998, latenciaP95Ms: 1240, errorRate: 0.002, cacheHitRate: 0.42, ultimaConsulta: "2026-04-29T14:24:55Z", circuitBreaker: "fechado" },
   { sourceId: "junta-rj", nome: "Junta Comercial RJ", status: "degradado", uptime24h: 0.962, latenciaP95Ms: 3850, errorRate: 0.043, cacheHitRate: 0.28, ultimaConsulta: "2026-04-29T13:48:12Z", circuitBreaker: "meio-aberto", observacao: "Latência elevada nas últimas 2h — possível instabilidade do provedor" },
@@ -399,22 +257,6 @@ export const sourceHealth: SourceHealth[] = [
 ];
 
 // --- Console DPO (EP-06-F5) ---
-export type DpoRequestType = "acesso" | "retificacao" | "eliminacao" | "portabilidade" | "informacao";
-export type DpoRequestStatus = "novo" | "em_atendimento" | "concluido" | "negado";
-
-export interface DpoRequest {
-  requestId: string;
-  titularNome: string;
-  titularDocumento: string;
-  tipo: DpoRequestType;
-  status: DpoRequestStatus;
-  receivedAt: string;
-  prazoLegalDias: number;
-  diasRestantes: number;
-  responsavel?: string;
-  descricao: string;
-}
-
 export const dpoRequests: DpoRequest[] = [
   { requestId: "lgpd_001", titularNome: "João da Silva", titularDocumento: "***.222.***-44", tipo: "acesso", status: "em_atendimento", receivedAt: "2026-04-26T10:00:00Z", prazoLegalDias: 15, diasRestantes: 11, responsavel: "dpo@bbf.com.br", descricao: "Solicita relação completa de processamentos do CPF nos últimos 12 meses." },
   { requestId: "lgpd_002", titularNome: "Maria Souza", titularDocumento: "***.333.***-55", tipo: "retificacao", status: "novo", receivedAt: "2026-04-29T09:30:00Z", prazoLegalDias: 15, diasRestantes: 14, descricao: "Solicita correção de qualificação extraída como 'sócia' para 'sócia-administradora'." },
@@ -424,17 +266,6 @@ export const dpoRequests: DpoRequest[] = [
 ];
 
 // --- Saúde de Dados / PII scans (EP-06-F2) ---
-export interface PiiScanResult {
-  scanId: string;
-  executadoEm: string;
-  servico: string;
-  amostraLogs: number;
-  ocorrenciasDetectadas: number;
-  ocorrenciasMascaradas: number;
-  cobertura: number;
-  status: "ok" | "alerta" | "critico";
-}
-
 export const piiScans: PiiScanResult[] = [
   { scanId: "scan_w17", executadoEm: "2026-04-28T22:00:00Z", servico: "orchestration-api", amostraLogs: 50000, ocorrenciasDetectadas: 1240, ocorrenciasMascaradas: 1240, cobertura: 1.0, status: "ok" },
   { scanId: "scan_w17", executadoEm: "2026-04-28T22:00:00Z", servico: "ai-ocr-service", amostraLogs: 30000, ocorrenciasDetectadas: 890, ocorrenciasMascaradas: 887, cobertura: 0.997, status: "alerta" },
@@ -446,14 +277,6 @@ export const piiScans: PiiScanResult[] = [
 export const piiTendencia30d = [0.998, 0.999, 1.0, 0.997, 1.0, 1.0, 0.999, 1.0, 0.996, 1.0, 1.0, 1.0, 0.999, 1.0, 0.998, 1.0, 0.997, 1.0, 1.0, 0.999, 1.0, 1.0, 0.998, 1.0, 0.999, 1.0, 0.997, 1.0, 0.999, 0.997];
 
 // --- Admin de perfis RBAC (EP-06-F4) ---
-export interface RoleDefinition {
-  roleId: string;
-  nome: string;
-  descricao: string;
-  usuariosAtivos: number;
-  permissoes: string[];
-}
-
 export const roles: RoleDefinition[] = [
   { roleId: "analista", nome: "Analista Jurídico", descricao: "Faz upload, revisa documentos e aprova decisões manuais", usuariosAtivos: 24, permissoes: ["documents:read", "documents:upload", "decision:read", "review:write", "manual:write"] },
   { roleId: "auditor", nome: "Auditor Interno", descricao: "Acesso somente-leitura à trilha de auditoria e replay", usuariosAtivos: 6, permissoes: ["audit:read", "decision:replay", "documents:read"] },
@@ -463,14 +286,6 @@ export const roles: RoleDefinition[] = [
   { roleId: "admin", nome: "Administrador da Plataforma", descricao: "Gerencia usuários, perfis e configurações", usuariosAtivos: 2, permissoes: ["roles:write", "users:write", "config:write", "*:read"] },
   { roleId: "consumer", nome: "Consumer (Jornada externa)", descricao: "Sistemas consumidores que chamam a API de decisão", usuariosAtivos: 7, permissoes: ["api:decision:read"] }
 ];
-
-export interface UserMock {
-  email: string;
-  nome: string;
-  roles: string[];
-  ultimoAcesso: string;
-  status: "ativo" | "inativo";
-}
 
 export const users: UserMock[] = [
   { email: "ana.silva@bbf.com.br", nome: "Ana Silva", roles: ["analista"], ultimoAcesso: "2026-04-29T14:22:00Z", status: "ativo" },
@@ -483,16 +298,6 @@ export const users: UserMock[] = [
 ];
 
 // --- Swagger / OpenAPI (EP-05-F5) ---
-export interface OpenApiEndpoint {
-  method: "GET" | "POST" | "PUT" | "DELETE";
-  path: string;
-  summary: string;
-  description: string;
-  tag: string;
-  params?: { name: string; in: "query" | "path" | "header" | "body"; type: string; required: boolean; description: string }[];
-  responses: { code: number; description: string; example?: unknown }[];
-}
-
 export const openApiEndpoints: OpenApiEndpoint[] = [
   {
     method: "GET",
@@ -615,18 +420,6 @@ export const canonicalSchemaPreview = {
 };
 
 // --- Catálogo de Operações (EP-02-F3) ---
-export interface Operation {
-  code: string;
-  displayName: string;
-  description: string;
-  category: "movimentacao" | "credito" | "garantia" | "cambio" | "societaria";
-  version: string;
-  owner: string;
-  status: "ativa" | "rascunho" | "depreciada";
-  createdAt: string;
-  lastModified: string;
-}
-
 export const operationsCatalog: Operation[] = [
   { code: "movimentacao_financeira", displayName: "Movimentação Financeira", description: "TED, DOC, transferências, pagamentos com débito em conta", category: "movimentacao", version: "1.2.0", owner: "ana.silva@bbf.com.br", status: "ativa", createdAt: "2024-01-15T10:00:00Z", lastModified: "2025-08-22T14:30:00Z" },
   { code: "contratacao_credito", displayName: "Contratação de Crédito", description: "Crédito rotativo, capital de giro e financiamentos PJ", category: "credito", version: "1.1.0", owner: "joao.t@bbf.com.br", status: "ativa", createdAt: "2024-02-10T09:00:00Z", lastModified: "2025-09-10T16:00:00Z" },
@@ -640,24 +433,6 @@ export const operationsCatalog: Operation[] = [
 ];
 
 // --- Catálogo de Regras DMN (EP-04-F2) ---
-export type RuleStatus = "ativa" | "proposta" | "em_revisao" | "depreciada";
-
-export interface DmnRule {
-  ruleId: string;
-  name: string;
-  description: string;
-  origemRegulatoria: string;
-  version: string;
-  status: RuleStatus;
-  owner: string;
-  approvers: string[];
-  expressionSummary: string;
-  appliesTo: string[];
-  lastModified: string;
-  promotedAt?: string;
-  decisoesAfetadas30d: number;
-}
-
 export const dmnRules: DmnRule[] = [
   { ruleId: "RN01", name: "Sócio deve estar ATIVO na fonte oficial", description: "Verifica se todos os signatários informados constam como ATIVOS na Junta Comercial", origemRegulatoria: "BACEN/Compliance interno", version: "1.2.0", status: "ativa", owner: "ana.silva@bbf.com.br", approvers: ["juridico.aprovador@bbf.com.br", "compliance@bbf.com.br"], expressionSummary: "for each signer in signers: assert official.status == ATIVO", appliesTo: ["movimentacao_financeira", "contratacao_credito", "abertura_conta", "constituicao_garantia"], lastModified: "2025-08-22T14:30:00Z", promotedAt: "2025-08-25T10:00:00Z", decisoesAfetadas30d: 1247 },
   { ruleId: "RN02", name: "Modo de assinatura deve cobrir a operação", description: "Combinação de signatários informados deve atender ao modo (isolada/conjunta) definido no canônico para a operação solicitada", origemRegulatoria: "Cláusula contratual + RN BACEN", version: "1.2.0", status: "ativa", owner: "ana.silva@bbf.com.br", approvers: ["juridico.aprovador@bbf.com.br"], expressionSummary: "evaluate(canonical.signatureMode, signers, operation) == VALID", appliesTo: ["movimentacao_financeira", "contratacao_credito", "constituicao_garantia"], lastModified: "2025-08-22T14:30:00Z", promotedAt: "2025-08-25T10:00:00Z", decisoesAfetadas30d: 1247 },
@@ -669,25 +444,6 @@ export const dmnRules: DmnRule[] = [
 ];
 
 // --- Consumidores da API (EP-05-F2 + F7) ---
-export type ConsumerStatus = "ativo" | "suspenso" | "em_homologacao";
-
-export interface ApiConsumer {
-  consumerId: string;
-  name: string;
-  description: string;
-  owner: string;
-  scopes: string[];
-  rateLimitPerMin: number;
-  status: ConsumerStatus;
-  requestsToday: number;
-  requestsMonth: number;
-  errorRate: number;
-  p95LatencyMs: number;
-  successRate: number;
-  lastCall: string;
-  homologadoEm?: string;
-}
-
 export const apiConsumers: ApiConsumer[] = [
   { consumerId: "onboarding-pj", name: "Onboarding PJ", description: "Jornada principal de abertura de conta para pessoas jurídicas", owner: "squad-onboarding@bbf.com.br", scopes: ["api:decision:read", "api:documents:upload"], rateLimitPerMin: 200, status: "ativo", requestsToday: 1487, requestsMonth: 38_421, errorRate: 0.003, p95LatencyMs: 1480, successRate: 0.997, lastCall: "2026-04-29T14:25:32Z", homologadoEm: "2026-02-01T10:00:00Z" },
   { consumerId: "credito-pj", name: "Crédito PJ", description: "Plataforma de concessão de crédito para empresas", owner: "squad-credito@bbf.com.br", scopes: ["api:decision:read"], rateLimitPerMin: 100, status: "ativo", requestsToday: 642, requestsMonth: 18_312, errorRate: 0.008, p95LatencyMs: 1620, successRate: 0.992, lastCall: "2026-04-29T14:18:11Z", homologadoEm: "2026-03-15T11:30:00Z" },
@@ -705,14 +461,6 @@ export const errorsLast24h = [0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 2, 1, 0, 0, 1, 0,
 export const latencyP95Last24h = [1420, 1380, 1350, 1320, 1300, 1290, 1280, 1310, 1450, 1580, 1640, 1720, 1810, 1820, 1780, 1640, 1590, 1620, 1610, 1580, 1540, 1490, 1460, 1430];
 
 // --- FinOps: custo por componente (EP-07-F9) ---
-export interface CostBreakdown {
-  componente: string;
-  custoUnitarioBRL: number;
-  participacaoPct: number;
-  tendencia30d: "estavel" | "alta" | "queda";
-  observacao?: string;
-}
-
 export const costPerDecisionBreakdown: CostBreakdown[] = [
   { componente: "LLM (Vertex AI Gemini Pro)", custoUnitarioBRL: 0.18, participacaoPct: 0.43, tendencia30d: "estavel", observacao: "~2.500 tokens médios por documento" },
   { componente: "OCR (Google Document AI)", custoUnitarioBRL: 0.09, participacaoPct: 0.21, tendencia30d: "queda", observacao: "Migração progressiva para Tesseract em casos simples" },
@@ -723,14 +471,6 @@ export const costPerDecisionBreakdown: CostBreakdown[] = [
 ];
 
 // Custo por jornada consumidora (mensal)
-export interface CostByConsumer {
-  consumerId: string;
-  name: string;
-  decisoesMes: number;
-  custoTotalMesBRL: number;
-  custoMedioBRL: number;
-}
-
 export const costByConsumer: CostByConsumer[] = [
   { consumerId: "onboarding-pj", name: "Onboarding PJ", decisoesMes: 38_421, custoTotalMesBRL: 16_136.82, custoMedioBRL: 0.42 },
   { consumerId: "credito-pj", name: "Crédito PJ", decisoesMes: 18_312, custoTotalMesBRL: 8_607.84, custoMedioBRL: 0.47 },
